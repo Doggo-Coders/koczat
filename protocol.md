@@ -123,16 +123,16 @@ opcode: int8
 
 
 Client -> Server
-
+```
 Hello
 GetChats
 JoinChat
 GetMessageHistory
 SendMessage
-
+```
 
 Server -> Client
-
+```
 HelloReply
 GetChatsReply
 JoinChatReply
@@ -140,3 +140,4 @@ GetMessageHistoryReply
 SendMessageReply
 MessageReceived
 ForceDisconnect
+```
