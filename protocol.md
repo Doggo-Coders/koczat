@@ -9,6 +9,15 @@ struct message {
 ```
 
 ```
+struct chat {
+	id: uint8
+	namesize: uint8
+	name: char[namesize]
+	passsize: uint8	
+}
+```
+
+```
 enum hello_status {
 	HELLO_OK = 1
 	HELLO_NAME_TAKEN = 2
@@ -65,6 +74,15 @@ opcode: int8
 ```
 opcode: int8
 chatid: uint8
+```
+
+## CreateChat packet
+```
+opcode: int8
+namesize: uint8
+chatname: char[namesize]
+passsize: uint8
+password: char[passsize]
 ```
 
 ## GetMessageHistory packet
@@ -127,8 +145,11 @@ Client -> Server
 Hello
 GetChats
 JoinChat
+CreateChat
 GetMessageHistory
 SendMessage
+MessageAcknowledged
+Disconnect
 ```
 
 Server -> Client
@@ -136,6 +157,7 @@ Server -> Client
 HelloReply
 GetChatsReply
 JoinChatReply
+CreateChatReply
 GetMessageHistoryReply
 SendMessageReply
 MessageReceived
