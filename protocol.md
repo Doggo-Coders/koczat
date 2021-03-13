@@ -1,165 +1,76 @@
-# Types
+# Primitive types
+type ChatId = uint16
+type str = (uint32, char[])
+type bool = uint8
+type UserId = uint16
+
+# Basics
+
+Alice -> Hello name:str -> Server -> HelloResp id:UserId -> Alice
+Server -> ForcedDisconnect -> Alice
+# Users
+
+Alice -> GetUserList -> Server -> GetUserListResp users:User[] -> Alice
+
 ```
-struct message {
-	textsize: uint16
-	authorsize: uint8
-	text: char[textsize]
-	author: char[authorsize]
+struct User {
+	id: UserId
+	name: str
 }
 ```
 
+# Chats
+
+Alice -> GetChatList -> Server -> GetChatListResp chats:Chat[] -> Alice
+
 ```
-struct chat {
-	id: uint8
-	namesize: uint8
-	name: char[namesize]
-	passsize: uint8	
+struct Chat {
+	isopen: bool
+	name: str
+	id: ChatId
 }
 ```
 
-```
-enum hello_status {
-	HELLO_OK = 1
-	HELLO_NAME_TAKEN = 2
-	HELLO_REJECTED = 3
-}
-```
+## Type of chats:
 
-```
-enum send_message_status {
-	SEND_MESSAGE_OK = 1
-	SEND_MESSAGE_TOO_LONG = 2
-	SEND_MESSAGE_REJECTED = 3
-}
-```
+### Open Chats
+Alice -> CreateOpenChat name:str -> Server -> CreateOpenChatResp id:ChatId -> Alice
+Bob -> JoinOpenChat id:ChatId -> (Server (-> JoinOpenChatResp -> Bob) AND (-> UserJoinedChat user:UserId Chat:ChatId) => Group)
 
-```
-enum join_chat_status {
-	JOIN_CHAT_OK = 1
-	JOIN_CHAT_BAD_CHATID = 2
-	JOIN_CHAT_REJECTED = 3
-}
-```
+### Password protected chats
+Alice -> CreatePasswordChat name:str pass:str -> Server -> CreatePasswordChatResp id:ChatId -> Alice
+Bob -> JoinPasswordChat id:ChatId pass:str -> (Server (-> JoinPasswordChatResp -> Bob) AND (-> UserJoinedChat user:UserId chat:ChatId) => Group)
 
-```
-enum get_message_history_status {
-	GET_MESSAGE_HISTORY_OK = 1
-	GET_MESSAGE_HISTORY_BAD_CHATID = 2
-	GET_MESSAGE_HISTORY_REJECTED = 3
-}
-```
+### Direct Chats
+Alice -> SendDirect to:UserId msg:str -> (Server (-> SendDirectResp -> Alice) AND (-> ReceiveDirect from:UserId msg:str -> Bob))
 
-# Client -> Server packets
-
-## Hello packet
-```
-opcode: int8
-namesize: uint8
-name: char[namelen]
-```
-## SendMessage packet
-```
-opcode: int8
-chatid: uint8
-textsize: uint16
-text: char[textsize]
-```
-
-## GetChats packet
-```
-opcode: int8
-```
-
-## JoinChat packet
-```
-opcode: int8
-chatid: uint8
-```
-
-## CreateChat packet
-```
-opcode: int8
-namesize: uint8
-chatname: char[namesize]
-passsize: uint8
-password: char[passsize]
-```
-
-## GetMessageHistory packet
-```
-opcode: int8
-chatid: uint8
-```
-
-## Disconnect packet
-```
-opcode: int8
-```
-
-# Server -> Client packets
-
-## HelloReply packet
-```
-opcode: int8
-status: enum hello_status (uint8)
-```
-
-## SendMessageReply packet
-```
-opcode: int8
-status: enum send_message_status (uint8)
-```
-
-## JoinChatReply packet
-```
-opcode: int8
-status: enum join_chat_status (uint8)
-```
-
-## GetMessageHistoryReply packet
-```
-opcode: int8
-status: enum get_message_history_status (uint8)
-messageslen: uint8
-messages: struct message[messageslen]
-```
-
-## MessageSent packet
-```
-opcode: int8
-chatid: uint8
-message: struct message
-```
-
-## ForceDisconnect packet
-```
-opcode: int8
-```
+# Messages
+Alice -> SendMessage id:ChatId msg:str -> (Server (-> SendMessageResp -> Alice) AND (-> ReceiveMessage id:ChatId msg:str => Group))
 
 
+# Opcodes
 
-
-
-Client -> Server
-```
-Hello
-GetChats
-JoinChat
-CreateChat
-GetMessageHistory
-SendMessage
-MessageAcknowledged
-Disconnect
-```
-
-Server -> Client
-```
-HelloReply
-GetChatsReply
-JoinChatReply
-CreateChatReply
-GetMessageHistoryReply
-SendMessageReply
-MessageReceived
-ForceDisconnect
-```
+| Value | Name |
+|-------|------|
+|  1   | Hello |
+|  2   | HelloResp |
+|  3   | ForcedDisconnect |
+|  4   | GetUserList |
+|  5   | GetUserListResp |
+|  6   | GetChatList |
+|  7   | GetChatListResp |
+|  8   | CreateOpenChat |
+|  9   | CreateOpenChatResp |
+|  10  | CreatePasswordChat |
+|  11  | CreatePasswordChatResp |
+|  12  | JoinOpenChat |
+|  13  | JoinOpenChatResp |
+|  14  | JoinPasswordChat |
+|  15  | JoinPasswordChatResp |
+|  16  | UserJoinedChat |
+|  17  | SendMessage |
+|  18  | SendMessageResp |
+|  19  | ReceiveMessage |
+|  20  | SendDirect |
+|  21  | SendDirectResp |
+|  22  | ReceiveDirect |
