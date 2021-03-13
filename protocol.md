@@ -1,16 +1,17 @@
 # Primitive types
+```
 type ChatId = uint16
 type str = (uint32, char[])
 type bool = uint8
 type UserId = uint16
+```
 
 # Basics
-
-Alice -> Hello name:str -> Server -> HelloResp id:UserId -> Alice
-Server -> ForcedDisconnect -> Alice
+`Alice -> Hello name:str -> Server -> HelloResp id:UserId -> Alice`  
+`Server -> ForcedDisconnect -> Alice`
 # Users
 
-Alice -> GetUserList -> Server -> GetUserListResp users:User[] -> Alice
+`Alice -> GetUserList -> Server -> GetUserListResp users:User[] -> Alice`  
 
 ```
 struct User {
@@ -21,7 +22,7 @@ struct User {
 
 # Chats
 
-Alice -> GetChatList -> Server -> GetChatListResp chats:Chat[] -> Alice
+`Alice -> GetChatList -> Server -> GetChatListResp chats:Chat[] -> Alice`  
 
 ```
 struct Chat {
@@ -34,19 +35,18 @@ struct Chat {
 ## Type of chats:
 
 ### Open Chats
-Alice -> CreateOpenChat name:str -> Server -> CreateOpenChatResp id:ChatId -> Alice
-Bob -> JoinOpenChat id:ChatId -> (Server (-> JoinOpenChatResp -> Bob) AND (-> UserJoinedChat user:UserId Chat:ChatId) => Group)
+`Alice -> CreateOpenChat name:str -> Server -> CreateOpenChatResp id:ChatId -> Alice`  
+`Bob -> JoinOpenChat id:ChatId -> (Server (-> JoinOpenChatResp -> Bob) AND (-> UserJoinedChat user:UserId Chat:ChatId) => Group)`
 
 ### Password protected chats
-Alice -> CreatePasswordChat name:str pass:str -> Server -> CreatePasswordChatResp id:ChatId -> Alice
-Bob -> JoinPasswordChat id:ChatId pass:str -> (Server (-> JoinPasswordChatResp -> Bob) AND (-> UserJoinedChat user:UserId chat:ChatId) => Group)
+`Alice -> CreatePasswordChat name:str pass:str -> Server -> CreatePasswordChatResp id:ChatId -> Alice`  
+`Bob -> JoinPasswordChat id:ChatId pass:str -> (Server (-> JoinPasswordChatResp -> Bob) AND (-> UserJoinedChat user:UserId chat:ChatId) => Group)`
 
 ### Direct Chats
-Alice -> SendDirect to:UserId msg:str -> (Server (-> SendDirectResp -> Alice) AND (-> ReceiveDirect from:UserId msg:str -> Bob))
+`Alice -> SendDirect to:UserId msg:str -> (Server (-> SendDirectResp -> Alice) AND (-> ReceiveDirect from:UserId msg:str -> Bob))`
 
 # Messages
-Alice -> SendMessage id:ChatId msg:str -> (Server (-> SendMessageResp -> Alice) AND (-> ReceiveMessage id:ChatId msg:str => Group))
-
+`Alice -> SendMessage id:ChatId msg:str -> (Server (-> SendMessageResp -> Alice) AND (-> ReceiveMessage id:ChatId msg:str => Group))`
 
 # Opcodes
 
