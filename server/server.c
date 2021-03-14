@@ -58,6 +58,7 @@ static void die(int exitcode, const char *fmt, ...);
 static void join_open_chat(uint16_t userid, const struct JoinOpenChat *req, struct JoinOpenChatResp *restrict resp);
 static void join_password_chat(uint16_t userid, const struct JoinPasswordChat *req, struct JoinPasswordChatResp *restrict resp);
 static uint16_t gen_chatid(bool set);
+static uint16_t gen_userid(bool set);
 static int handle_disconnect(int connfd);
 static int handle_new_connection(int connfd);
 static int handle_packet(int connfd, void *buf, size_t bufsz);
@@ -227,6 +228,23 @@ gen_chatid(bool set)
 	return 0;
 }
 
+uint16_t
+gen_userid(bool set)
+{
+	for (int i = 0; i < MAX_USERS/8; ++i) {
+		for (int off = 7; off >= 0; --off) {
+			if (!(g_users_ids[i] & (1 << off))) {
+				int ind = 8*i + off;
+				if (set) {
+					g_users_ids[i] |= 1 << off;
+				}
+				return ind + 1;
+			}
+		}
+	}
+	return 0;
+}
+
 int
 handle_disconnect(int connfd)
 {
@@ -293,7 +311,8 @@ log_info(const char *fmt, ...)
 	va_end(v);
 }
 
-void log_infov(const char *fmt, va_list v)
+void
+log_infov(const char *fmt, va_list v)
 {
 	printf("[INFO ]: ");
 	vprintf(fmt, v);
