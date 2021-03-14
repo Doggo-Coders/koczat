@@ -39,6 +39,7 @@ struct chat {
 };
 
 struct user {
+	int connfd;
 	uint16_t namelen;
 	char *name;
 };
@@ -61,7 +62,7 @@ static uint16_t gen_chatid(bool set);
 static uint16_t gen_userid(bool set);
 static int handle_disconnect(int connfd);
 static int handle_new_connection(int connfd);
-static int handle_packet(int connfd, void *buf, size_t bufsz);
+static int handle_packet(int connfd, void *buf, size_t reqsz);
 static inline void log_info(const char *fmt, ...);
 static void log_infov(const char *fmt, va_list v);
 static inline void log_errno(int err);
@@ -70,6 +71,7 @@ static void log_errorv(const char *fmt, va_list v);
 static void main_loop();
 static void receive_message(uint16_t userid, const struct SendMessage *req, struct ReceiveMessage *restrict resp);
 static void send_message(uint16_t userid, const struct SendMessage *req, struct SendMessageResp *restrict resp);
+static int send_packet(int connfd, void *data, size_t datasz);
 static void sleep_millis(long millis);
 #if !defined(_POSIX_C_SOURCE) || _POSIX_C_SOURCE < 200809L
 static inline char *strdup(const char *str);
@@ -254,8 +256,8 @@ handle_disconnect(int connfd)
 int
 handle_new_connection(int connfd)
 {
-	// TODO: BYTE ORDER!!!
 	int err;
+	uint16_t userid;
 	struct Hello *hello = malloc(sizeof(struct Hello) + MAX_USER_NAME_LEN + 1);
 	struct HelloResp resp;
 	resp.op = OP_HELLO_RESP;
@@ -274,16 +276,23 @@ handle_new_connection(int connfd)
 		return 0;
 	}
 	
-	if (hello->op != OP_HELLO) {
+	if (g_users_count >= MAX_USERS) {
 		resp.status = STAT_FU;
-		send(connfd, &resp, sizeof(struct HelloResp), 0);
+		send_packet(connfd, &resp, sizeof(struct HelloResp));
 		close(connfd);
 		return 0;
 	}
 	
+	if (hello->op != OP_HELLO) {
+		close(connfd);
+		return 0;
+	}
+	
+	hello->namelen = ntohs(hello->namelen);
+	
 	if (hello->namelen > MAX_USER_NAME_LEN) {
 		resp.status = STAT_HELLO_NAME_TO_LONG;
-		send(connfd, &resp, sizeof(struct HelloResp), 0);
+		send_packet(connfd, &resp, sizeof(struct HelloResp));
 		close(connfd);
 		return 0;
 	}
@@ -291,15 +300,80 @@ handle_new_connection(int connfd)
 	// TODO: Validate names UTF-8/ASCII/non-NUL
 	
 	resp.status = STAT_OK;
-	send(connfd, &resp, sizeof(struct HelloResp), 0);
-	// TODO: send() errors
+	
+	if (send_packet(connfd, &resp, sizeof(struct HelloResp)) < 0) {
+		err = errno;
+		switch (err) {
+		case ECONNRESET:
+			close(connfd);
+			return 0;
+		case ENOMEM:
+			log_error("send() ran out of memory when sending HelloResp.");
+			close(connfd);
+			return 0;
+		}
+	}
+	
+	++g_users_count;
+	userid = gen_userid(true);
+	g_users[userid - 1] = (struct user) {
+		.connfd = connfd,
+		.namelen = hello->namelen,
+		.name = strndup(hello->name, hello->namelen)
+	};
+	
 	return 1;
 }
 
 int
-handle_packet(int connfd, void *buf, size_t bufsz)
+handle_packet(int connfd, void *buf, size_t reqsz)
 {
+	uint16_t userid;
+	int sendret, err;
 	
+	for (int i = 0; i < MAX_USERS; ++i) {
+		if (bitset_get(g_users_ids, i)) {
+			if (g_users[i].connfd == connfd) {
+				userid = i + 1;
+			}
+		}
+	}
+	
+	// TODO: cases for other opcodes
+	// .op is always first
+	switch (*(uint8_t *) buf) {
+	case OP_CREATE_OPEN_CHAT: {
+		struct CreateOpenChat *req = buf;
+		struct CreateOpenChatResp resp;
+		req->namelen = ntohs(req->namelen);
+		if (reqsz < 1 + 2 + req->namelen) {
+			goto invalid;
+		}
+		resp.op = OP_CREATE_OPEN_CHAT_RESP;
+		create_open_chat(userid, buf, &resp);
+		sendret = send_packet(connfd, &resp, sizeof(struct CreateOpenChatResp));
+	} break;
+	default:
+		goto invalid;
+	}
+	
+	if (sendret < 0) {
+		err = errno;
+		switch (err) {
+		case ECONNRESET:
+			// handle
+			break;
+		case ENOMEM:
+			// handle
+			break;
+		}
+	}
+	
+	goto skip;
+invalid:
+	// do sth if the request was invalid
+skip:
+	;
 }
 
 void
@@ -369,6 +443,12 @@ send_message(uint16_t userid, const struct SendMessage *req, struct SendMessageR
 	}
 	
 	resp->status = STAT_OK;
+}
+
+int
+send_packet(int connfd, void *data, size_t datasz)
+{
+	return send(connfd, data, datasz, 0);
 }
 
 void
@@ -506,7 +586,7 @@ again:
 						FD_CLR(i, &sockfds);
 					} else {
 						// handle packet
-						handle_packet(i, buf, MAX_REQ_SIZE);
+						handle_packet(i, buf, ret);
 					}
 				}
 			}
