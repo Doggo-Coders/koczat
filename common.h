@@ -27,6 +27,9 @@ struct Hello {
 
 #define OP_HELLO_RESP 2
 
+#define STAT_HELLO_NAME_TO_LONG 2
+#define STAT_HELLO_BAD_NAME 3
+
 struct HelloResp {
 	uint8_t op;
 	uint8_t status;

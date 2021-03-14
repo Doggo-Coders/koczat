@@ -1,3 +1,5 @@
+#include <errno.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -5,11 +7,26 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef __unix__
+#include <fcntl.h>
+#include <netinet/ip.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <time.h>
+#include <unistd.h>
+#else
+#include <windows.h>
+#endif
+
 #include "../common.h"
 
 
 #define MAX_CHATS 256
 #define MAX_USERS 256
+#define MAX_USER_NAME_LEN 63
+#define MAX_REQ_SIZE 65536 // 64 KiB
+#define SERVER_BACKLOG 1024 // idk
+#define HELLO_PACKET_TIMEOUT_MS 250
 
 
 struct chat {
@@ -37,15 +54,26 @@ static inline int bitset_get(uint8_t *bitset, size_t ind);
 static inline void bitset_set(uint8_t *bitset, size_t ind);
 static void create_open_chat(uint16_t userid, const struct CreateOpenChat *req, struct CreateOpenChatResp *restrict resp);
 static void create_password_chat(uint16_t userid, const struct CreatePasswordChat *req, struct CreatePasswordChatResp *restrict resp);
+static void die(int exitcode, const char *fmt, ...);
+static void join_open_chat(uint16_t userid, const struct JoinOpenChat *req, struct JoinOpenChatResp *restrict resp);
+static void join_password_chat(uint16_t userid, const struct JoinPasswordChat *req, struct JoinPasswordChatResp *restrict resp);
+static uint16_t gen_chatid(bool set);
+static int handle_disconnect(int connfd);
+static int handle_new_connection(int connfd);
+static int handle_packet(int connfd, void *buf, size_t bufsz);
+static inline void log_info(const char *fmt, ...);
+static void log_infov(const char *fmt, va_list v);
+static inline void log_errno(int err);
+static inline void log_error(const char *fmt, ...);
+static void log_errorv(const char *fmt, va_list v);
+static void main_loop();
+static void receive_message(uint16_t userid, const struct SendMessage *req, struct ReceiveMessage *restrict resp);
+static void send_message(uint16_t userid, const struct SendMessage *req, struct SendMessageResp *restrict resp);
+static void sleep_millis(long millis);
 #if !defined(_POSIX_C_SOURCE) || _POSIX_C_SOURCE < 200809L
 static inline char *strdup(const char *str);
 static char *strndup(const char *str, size_t len);
 #endif // _POSIX_C_SOURCE
-static void join_open_chat(uint16_t userid, const struct JoinOpenChat *req, struct JoinOpenChatResp *restrict resp);
-static void join_password_chat(uint16_t userid, const struct JoinPasswordChat *req, struct JoinPasswordChatResp *restrict resp);
-static uint16_t gen_chatid(bool set);
-static void receive_message(uint16_t userid, const struct SendMessage *req, struct ReceiveMessage *restrict resp);
-static void send_message(uint16_t userid, const struct SendMessage *req, struct SendMessageResp *restrict resp);
 
 
 int
@@ -106,23 +134,17 @@ create_password_chat(uint16_t userid, const struct CreatePasswordChat *req, stru
 	resp->id = chatid;
 }
 
-#if !defined(_POSIX_C_SOURCE) || _POSIX_C_SOURCE < 200809L
-
-char *
-strdup(const char *str)
+void
+die(int exitcode, const char *fmt, ...)
 {
-	return strndup(str, strlen(str));
+	va_list v;
+	va_start(v, fmt);
+	printf("[FATAL]: ");
+	vprintf(fmt, v);
+	putchar('\n');
+	va_end(v);
+	exit(exitcode);
 }
-
-char *
-strndup(const char *str, size_t len)
-{
-	char *s2 = malloc(len + 1);
-	memcpy(s2, str, len);
-	return s2;
-}
-
-#endif // _POSIX_C_SOURCE
 
 void
 join_open_chat(uint16_t userid, const struct JoinOpenChat *req, struct JoinOpenChatResp *restrict resp)
@@ -205,6 +227,101 @@ gen_chatid(bool set)
 	return 0;
 }
 
+int
+handle_disconnect(int connfd)
+{
+	
+}
+
+int
+handle_new_connection(int connfd)
+{
+	// TODO: BYTE ORDER!!!
+	int err;
+	struct Hello *hello = malloc(sizeof(struct Hello) + MAX_USER_NAME_LEN + 1);
+	struct HelloResp resp;
+	resp.op = OP_HELLO_RESP;
+	
+	sleep_millis(HELLO_PACKET_TIMEOUT_MS);
+	
+	if (recv(connfd, &hello, sizeof(struct Hello) + MAX_USER_NAME_LEN, MSG_DONTWAIT) < 0) {
+		err = errno;
+		if (err == EAGAIN || err == EWOULDBLOCK) {
+			// Didn't receive Hello -> close conn
+			log_info("New connection didn't send Hello. Closing connection.");
+		} else if (err == ECONNREFUSED) {
+			log_error("Connection refused when reading Hello. Closing connection.");
+		}
+		close(connfd);
+		return 0;
+	}
+	
+	if (hello->op != OP_HELLO) {
+		resp.status = STAT_FU;
+		send(connfd, &resp, sizeof(struct HelloResp), 0);
+		close(connfd);
+		return 0;
+	}
+	
+	if (hello->namelen > MAX_USER_NAME_LEN) {
+		resp.status = STAT_HELLO_NAME_TO_LONG;
+		send(connfd, &resp, sizeof(struct HelloResp), 0);
+		close(connfd);
+		return 0;
+	}
+	
+	// TODO: Validate names UTF-8/ASCII/non-NUL
+	
+	resp.status = STAT_OK;
+	send(connfd, &resp, sizeof(struct HelloResp), 0);
+	// TODO: send() errors
+	return 1;
+}
+
+int
+handle_packet(int connfd, void *buf, size_t bufsz)
+{
+	
+}
+
+void
+log_info(const char *fmt, ...)
+{
+	va_list v;
+	va_start(v, fmt);
+	log_infov(fmt, v);
+	va_end(v);
+}
+
+void log_infov(const char *fmt, va_list v)
+{
+	printf("[INFO ]: ");
+	vprintf(fmt, v);
+	putchar('\n');
+}
+
+void
+log_errno(int err)
+{
+	log_error("errno %d: %s", err, strerror(err));
+}
+
+void
+log_error(const char *fmt, ...)
+{
+	va_list v;
+	va_start(v, fmt);
+	log_errorv(fmt, v);
+	va_end(v);
+}
+
+void log_errorv(const char *fmt, va_list v)
+{
+	printf("[ERROR]: ");
+	vprintf(fmt, v);
+	putchar('\n');
+}
+
 void
 receive_message(uint16_t userid, const struct SendMessage *req, struct ReceiveMessage *restrict resp)
 {
@@ -235,10 +352,153 @@ send_message(uint16_t userid, const struct SendMessage *req, struct SendMessageR
 	resp->status = STAT_OK;
 }
 
+void
+sleep_millis(long millis)
+{
+#ifdef __unix__
+	struct timespec tm;
+	tm.tv_sec = millis / 1000;
+	tm.tv_nsec = millis * 1000000;
+	while (nanosleep(&tm, &tm) < 0) {
+		if (errno != EINTR) {
+			break;
+		}
+	}
+#else
+	sleep(millis);
+#endif
+}
+
+#if !defined(_POSIX_C_SOURCE) || _POSIX_C_SOURCE < 200809L
+
+char *
+strdup(const char *str)
+{
+	return strndup(str, strlen(str));
+}
+
+char *
+strndup(const char *str, size_t len)
+{
+	char *s2 = malloc(len + 1);
+	memcpy(s2, str, len);
+	return s2;
+}
+
+#endif // _POSIX_C_SOURCE
+
+void
+main_loop(int port)
+{
+	uint8_t buf[MAX_REQ_SIZE];
+	int err, ret;
+	int serverfd, connfd;
+	struct sockaddr_in sockaddr;
+	fd_set readyfds, sockfds;
+	
+	memset(&sockaddr, 0, sizeof(struct sockaddr_in));
+	sockaddr.sin_family = AF_INET;
+	sockaddr.sin_addr.s_addr = INADDR_ANY;
+	sockaddr.sin_port = htons(port);
+	
+	if ((serverfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		err = errno;
+		switch (err) {
+		case EACCES:
+			die(-1, "No permission to open a TCP socket.");
+		case EAFNOSUPPORT:
+		case EINVAL:
+			die(-1, "Your system doesn't support IPv4 family sockets.");
+		case EMFILE:
+			die(-1, "Process file descriptor limit reached.");
+		case ENFILE:
+			die(-1, "System file descriptor limit reached.");
+		case ENOBUFS:
+		case ENOMEM:
+			die(137, "socket() ran out of memory.");
+		case EPROTONOSUPPORT:
+			die(-1, "Your system doesn't support TCP sockets.");
+		}
+	}
+	
+	if (bind(serverfd, (struct sockaddr *) &sockaddr, sizeof(struct sockaddr_in)) < 0) {
+		err = errno;
+		switch (err) {
+		case EACCES:
+			die(-1, "No permission to bind the TCP socket.");
+		case EADDRINUSE:
+			die(-1, "Socket address already in use.");
+		}
+	}
+	
+	if (listen(serverfd, SERVER_BACKLOG) < 0) {
+		err = errno;
+		switch (err) {
+		case EADDRINUSE:
+			die(-1, "Another socket is already listening on port %d.", port);
+		}
+	}
+	
+	FD_ZERO(&readyfds);
+	FD_ZERO(&sockfds);
+	
+	FD_SET(serverfd, &sockfds);
+	
+	while (true) {
+		readyfds = sockfds;
+		
+		if (select(FD_SETSIZE, &readyfds, NULL, NULL, NULL) < 0) {
+			err = errno;
+			if (err == ENOMEM) {
+				die(137, "select() ran out of memory.");
+			} else {
+				log_errno(err);
+			}
+		}
+		
+		for (int i = 0; i < FD_SETSIZE; ++i) {
+			if (FD_ISSET(i, &readyfds)) {
+				if (i == serverfd) {
+					// handle new conn
+again:
+					connfd = accept(serverfd, NULL, NULL);
+					if (connfd < 0) {
+						err = errno;
+						if (err == EAGAIN || err == EWOULDBLOCK) {
+							goto again;
+						} else {
+							log_errno(err);
+						}
+						continue;
+					}
+					if (handle_new_connection(connfd)) {
+						FD_SET(connfd, &sockfds);
+					} else {
+						close(connfd);
+					}
+				} else {
+					ret = recv(i, buf, MAX_REQ_SIZE, 0);
+					if (ret < 0) {
+						err = errno;
+						log_errno(err);
+					} else if (ret == 0) {
+						// disconnect
+						handle_disconnect(i);
+						FD_CLR(i, &sockfds);
+					} else {
+						// handle packet
+						handle_packet(i, buf, MAX_REQ_SIZE);
+					}
+				}
+			}
+		}
+	}
+}
+
 int
 main(int argc, char **argv)
 {
-	
+	main_loop(8042);
 	
 	return 0;
 }
