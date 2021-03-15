@@ -17,6 +17,17 @@ end
 
 function on_connect_button_clicked(btn)
 	println("[klik klik]")
+	ip = parse(IPAddr, get_gtk_property(gtkbuilder["ip_entry"], :text, String))
+	port = parse(Int, get_gtk_property(gtkbuilder["port_entry"], :text, String))
+	username = get_gtk_property(gtkbuilder["username_entry"], :text, String)
+	
+	println("[] $ip:$port $username")
+	
+	global conn = connect(ip, port)
+	write(conn, b"\x01\x00\x06abcdef")
+	bytes = readavailable(conn)
+	
+	println("Received: $bytes")
 end
 
 end # module
