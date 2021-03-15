@@ -54,6 +54,7 @@ struct user g_users[MAX_USERS];
 
 static inline int bitset_get(uint8_t *bitset, size_t ind);
 static inline void bitset_set(uint8_t *bitset, size_t ind);
+static inline void bitset_unset(uint8_t *bitset, size_t ind);
 static void create_open_chat(uint16_t userid, const struct CreateOpenChat *req, struct CreateOpenChatResp *restrict resp);
 static void create_password_chat(uint16_t userid, const struct CreatePasswordChat *req, struct CreatePasswordChatResp *restrict resp);
 static void die(int exitcode, const char *fmt, ...);
@@ -63,7 +64,7 @@ static uint16_t gen_chatid(bool set);
 static uint16_t gen_userid(bool set);
 static struct GetUserListResp *get_user_list(uint16_t userid, const struct GetUserList *req, struct GetUserListResp *resp, size_t *restrict respsz);
 static struct GetChatListResp *get_chat_list(uint16_t userid, const struct GetChatList *req, struct GetChatListResp *resp, size_t *restrict respsz);
-static int handle_disconnect(int connfd);
+static void handle_disconnect(int connfd);
 static int handle_new_connection(int connfd);
 static int handle_packet(int connfd, void *buf, size_t reqsz);
 static inline void log_info(const char *fmt, ...);
@@ -96,6 +97,12 @@ void
 bitset_set(uint8_t *bitset, size_t ind)
 {
 	bitset[ind / 8] |= 1 << ind % 8;
+}
+
+void
+bitset_unset(uint8_t *bitset, size_t ind)
+{
+	bitset[ind / 8] &= ~(1 << ind % 8);
 }
 
 void
@@ -301,10 +308,17 @@ get_user_list(uint16_t userid, const struct GetUserList *req, struct GetUserList
 	return resp;
 }
 
-int
+void
 handle_disconnect(int connfd)
 {
-	
+	for (int i = 0; i < MAX_USERS; ++i) {
+		if (g_users[i].connfd == connfd) {
+			free(g_users[i].name);
+			g_users[i].connfd = g_users[i].namelen = 0;
+			g_users[i].name = NULL;
+			bitset_unset(g_users_ids, i);
+		}
+	}
 }
 
 int
@@ -375,6 +389,8 @@ handle_new_connection(int connfd)
 		.namelen = hello->namelen,
 		.name = strndup(hello->name, hello->namelen)
 	};
+	
+	log_info("New connection.");
 	
 	return 1;
 }
