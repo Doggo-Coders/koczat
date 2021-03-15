@@ -267,7 +267,7 @@ Disconnect</property>
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkListBox">
+                      <object class="GtkListBox" id="channel_list">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                       </object>
