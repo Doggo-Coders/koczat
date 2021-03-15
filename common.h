@@ -199,6 +199,8 @@ struct SendDirect {
 
 #define OP_SEND_DIRECT_RESP 21
 
+#define STAT_SEND_DIRECT_BAD_USER 2
+
 struct SendDirectResp {
 	uint8_t op;
 	uint8_t status;
