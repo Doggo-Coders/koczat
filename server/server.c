@@ -15,8 +15,17 @@
 #include <sys/socket.h>
 #include <time.h>
 #include <unistd.h>
-#else
+
+#define GET_ERR (err = errno)
+#elif _WIN32
+#include <winsock2.h>
 #include <windows.h>
+#include <Ws2tcpip.h>
+
+#define close(x) (closesocket(x))
+#define GET_ERR (err = WSAGetLastError())
+#else
+#error Use Unix-like or Windows
 #endif
 
 #include "../common.h"
@@ -69,7 +78,10 @@ static int handle_new_connection(int connfd);
 static int handle_packet(int connfd, void *buf, size_t reqsz);
 static inline void log_info(const char *fmt, ...);
 static void log_infov(const char *fmt, va_list v);
-static inline void log_errno(int err);
+// static inline void log_errno(int err); 
+
+#define log_errno(x) (log_error("Errno %d @ line %d, func %s", (x), __LINE__, __func__))
+
 static inline void log_error(const char *fmt, ...);
 static void log_errorv(const char *fmt, va_list v);
 static void main_loop();
@@ -82,8 +94,8 @@ static void send_receive_direct(uint16_t userid, const struct SendDirect *req);
 static void send_receive_message(uint16_t userid, const struct SendMessage *req);
 static void sleep_millis(long millis);
 #if !defined(_POSIX_C_SOURCE) || _POSIX_C_SOURCE < 200809L
-static inline char *strdup(const char *str);
-static char *strndup(const char *str, size_t len);
+char *strdup(const char *str);
+char *strndup(const char *str, size_t len);
 #endif // _POSIX_C_SOURCE
 
 
@@ -326,14 +338,25 @@ handle_new_connection(int connfd)
 {
 	int err;
 	uint16_t userid;
+#ifdef _WIN32
+	u_long win_flags;
+#endif
 	struct Hello *hello = malloc(sizeof(struct Hello) + MAX_USER_NAME_LEN + 1);
 	struct HelloResp resp;
 	resp.op = OP_HELLO_RESP;
 	
 	sleep_millis(HELLO_PACKET_TIMEOUT_MS);
+
+#ifdef _WIN32
+	win_flags = 1;
+	ioctlsocket(connfd, FIONBIO, &win_flags);
+#ifndef MSG_DONTWAIT
+#define MSG_DONTWAIT 0
+#endif
+#endif
 	
 	if (recv(connfd, &hello, sizeof(struct Hello) + MAX_USER_NAME_LEN, MSG_DONTWAIT) < 0) {
-		err = errno;
+		GET_ERR;
 		if (err == EAGAIN || err == EWOULDBLOCK) {
 			// Didn't receive Hello -> close conn
 			log_info("New connection didn't send Hello. Closing connection.");
@@ -370,7 +393,7 @@ handle_new_connection(int connfd)
 	resp.status = STAT_OK;
 	
 	if (send_packet(connfd, &resp, sizeof(struct HelloResp)) < 0) {
-		err = errno;
+		GET_ERR;
 		switch (err) {
 		case ECONNRESET:
 			close(connfd);
@@ -510,7 +533,7 @@ handle_packet(int connfd, void *buf, size_t reqsz)
 	}
 	
 	if (sendret < 0) {
-		err = errno;
+		GET_ERR;
 		switch (err) {
 		case ECONNRESET:
 			log_error("Client connection reset when responding/notifying.");
@@ -546,11 +569,13 @@ log_infov(const char *fmt, va_list v)
 	putchar('\n');
 }
 
+/* TO UNCOMMENT
 void
 log_errno(int err)
 {
 	log_error("errno %d: %s", err, strerror(err));
 }
+*/
 
 void
 log_error(const char *fmt, ...)
@@ -633,7 +658,7 @@ send_receive_direct(uint16_t userid, const struct SendDirect *req)
 	receive_direct(userid, req, notif);
 	
 	if (send_packet(g_users[req->userid].connfd, notif, sizeof(struct ReceiveDirect) + req->msglen) < 0) {
-		err = errno;
+		GET_ERR;
 		switch (err) {
 		case ECONNRESET:
 			log_error("Client connection reset when sending ReceiveDirect.");
@@ -664,7 +689,7 @@ send_receive_message(uint16_t userid, const struct SendMessage *req)
 			}
 			
 			if (send_packet(g_users[i].connfd, notif, sizeof(struct ReceiveMessage) + req->msglen) < 0) {
-				err = errno;
+				GET_ERR;
 				switch (err) {
 				case ECONNRESET:
 					log_error("Client connection reset when sending ReceiveMessage.");
@@ -692,8 +717,8 @@ sleep_millis(long millis)
 			break;
 		}
 	}
-#else
-	sleep(millis);
+#elif _WIN32
+	Sleep(millis);
 #endif
 }
 
@@ -737,7 +762,7 @@ main_loop(int port)
 	sockaddr.sin_port = htons(port);
 	
 	if ((serverfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		err = errno;
+		GET_ERR;
 		switch (err) {
 		case EACCES:
 			die(77, "No permission to open a TCP socket.");
@@ -757,7 +782,7 @@ main_loop(int port)
 	}
 	
 	if (bind(serverfd, (struct sockaddr *) &sockaddr, sizeof(struct sockaddr_in)) < 0) {
-		err = errno;
+		GET_ERR;
 		switch (err) {
 		case EACCES:
 			die(77, "No permission to bind the TCP socket.");
@@ -767,7 +792,7 @@ main_loop(int port)
 	}
 	
 	if (listen(serverfd, SERVER_BACKLOG) < 0) {
-		err = errno;
+		GET_ERR;
 		switch (err) {
 		case EADDRINUSE:
 			die(74, "Another socket is already listening on port %d.", port);
@@ -783,7 +808,7 @@ main_loop(int port)
 		readyfds = sockfds;
 		
 		if (select(FD_SETSIZE, &readyfds, NULL, NULL, NULL) < 0) {
-			err = errno;
+			GET_ERR;
 			if (err == ENOMEM) {
 				die(137, "select() ran out of memory.");
 			} else {
@@ -798,7 +823,7 @@ main_loop(int port)
 again:
 					connfd = accept(serverfd, NULL, NULL);
 					if (connfd < 0) {
-						err = errno;
+						GET_ERR;
 						if (err == EAGAIN || err == EWOULDBLOCK) {
 							goto again;
 						} else {
@@ -814,7 +839,7 @@ again:
 				} else {
 					ret = recv(i, buf, MAX_REQ_SIZE, 0);
 					if (ret < 0) {
-						err = errno;
+						GET_ERR;
 						log_errno(err);
 					} else if (ret == 0) {
 						// disconnect
@@ -836,8 +861,11 @@ again:
 int
 main(int argc, char **argv)
 {
+	#ifdef _WIN32
+	int err;
+	WSADATA wsadata;
+	#endif
 	int port = 8042;
-	
 	for (int i = 1; i < argc; ++i) {
 		char *arg = argv[i];
 		
@@ -847,7 +875,16 @@ main(int argc, char **argv)
 			sscanf(arg, "%d", &port);
 		}
 	}
+
+	#ifdef _WIN32
+	wsadata.wVersion = 0x0202;
+	wsadata.wHighVersion = 0xffff;							 
 	
+	if (WSAStartup(wsadata.wVersion, &wsadata) != 0) {
+		GET_ERR;
+		log_errno(err);
+	}
+	#endif
 	main_loop(port);
 	
 	return 0;
