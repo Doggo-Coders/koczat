@@ -1,0 +1,8 @@
+name = "KoczatClient"
+uuid = "3d969ee7-ec42-45f7-9797-c727df593c82"
+authors = ["MasFlam <masflam@masflam.com>", "TFKls <tfk@tfkls.dev>"]
+version = "0.1.0"
+
+[deps]
+Gtk = "4c0ca9eb-093a-5379-98c5-f87ac0bbbf44"
+Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
