@@ -4,16 +4,11 @@ using Gtk, Sockets
 
 const glade_xml = read(joinpath(@__DIR__, "../chatapp.glade"), String)
 
-function __init__()
-	global gtkbuilder = nothing
-	global window = nothing
-end
-
 julia_main() = (main(); Cint(0))
 
 function main(args = ARGS)
-	gtkbuilder = GtkBuilder(buffer = glade_xml)
-	window = gtkbuilder["application"]
+	global gtkbuilder = GtkBuilder(buffer = glade_xml)
+	global window = gtkbuilder["application"]
 	
 	signal_connect(on_connect_button_clicked, gtkbuilder["connect_button"], :clicked)
 	
