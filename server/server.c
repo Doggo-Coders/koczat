@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <netinet/tcp.h>
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <time.h>
@@ -355,7 +356,7 @@ handle_new_connection(int connfd)
 #endif
 #endif
 	
-	if (recv(connfd, &hello, sizeof(struct Hello) + MAX_USER_NAME_LEN, MSG_DONTWAIT) < 0) {
+	if (recv(connfd, hello, sizeof(struct Hello) + MAX_USER_NAME_LEN, MSG_DONTWAIT) < 0) {
 		GET_ERR;
 		if (err == EAGAIN || err == EWOULDBLOCK) {
 			// Didn't receive Hello -> close conn
@@ -750,6 +751,7 @@ usagedie()
 void
 main_loop(int port)
 {
+	int the_number_one = 1;
 	uint8_t buf[MAX_REQ_SIZE];
 	int err, ret;
 	int serverfd, connfd;
@@ -831,6 +833,7 @@ again:
 						}
 						continue;
 					}
+					setsockopt(connfd, IPPROTO_TCP, TCP_NODELAY, (char *) &the_number_one, sizeof(int));
 					if (handle_new_connection(connfd)) {
 						FD_SET(connfd, &sockfds);
 					} else {
