@@ -163,6 +163,10 @@ function main(args = ARGS)
 	showall(window)
 end
 
+
+asByteArray(x:: Integer) = reinterpret(UInt8, [x])
+asByteArray(x:: String) = transcode(UInt8, x)
+
 function on_connect_button_clicked(btn)
 	println("[INFO] Connecting...")    
 	ip = parse(IPAddr, get_gtk_property(gtkbuilder["ip_entry"], :text, String))
@@ -170,10 +174,11 @@ function on_connect_button_clicked(btn)
 	username = get_gtk_property(gtkbuilder["username_entry"], :text, String)
 	
 	println("[INFO] $ip:$port $username")
-	
+	len = asByteArray(hton(convert(UInt16, length(username))))
+  req = vcat(b"\x01", len, asByteArray(username))
+  println("[INFO] Request: $req")
 	global conn = connect(ip, port)
-  len = uint16  
-	write(conn, b"\x01\x00\x06abcdef")
+	write(conn, req)
 	bytes = readavailable(conn)
 	
 	println("Received: $bytes")
