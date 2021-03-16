@@ -3,17 +3,17 @@ module KoczatClient
 using Gtk, Sockets
 
 struct Chat
-	id:: Cushort
-	isopen:: Cbool
-	namelen:: Cushort
-	name:: Array{UInt8}
+	id:: UInt16
+	isopen:: UInt8
+	namelen:: UInt16
+	name:: Ptr{UInt8}
 end
 
 struct User
-	id:: Cushort
-	isopen:: Cbool
-	namelen:: Cushort
-	name:: Array{UInt8}
+	id:: UInt16
+	isopen:: UInt8
+	namelen:: UInt16
+  name:: Ptr{UInt8}
 end
 
 struct Hello 
@@ -154,7 +154,6 @@ const glade_xml = read(joinpath(@__DIR__, "../chatapp.glade"), String)
 julia_main() = (main(); Cint(0))
 
 function main(args = ARGS)
-  align_packmax(1)
 	global gtkbuilder = GtkBuilder(buffer = glade_xml)
 	global window = gtkbuilder["application"]
 	
