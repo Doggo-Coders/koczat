@@ -1,5 +1,7 @@
 #include <stdint.h>
 
+#pragma pack (push, 1)
+
 #define STAT_OK 0
 #define STAT_FU 1
 
@@ -214,3 +216,5 @@ struct ReceiveDirect {
 	uint16_t msglen;
 	char msg[];
 };
+
+#pragma pack (pop)
