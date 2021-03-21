@@ -70,8 +70,7 @@
               <object class="GtkLabel" id="status_label">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="label" translatable="yes">Status:
-Disconnected</property>
+                <property name="label" translatable="yes">Disconnected</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -138,7 +137,7 @@ Disconnected</property>
                   <object class="GtkLabel">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="label" translatable="yes">Create channel</property>
+                    <property name="label" translatable="yes">Create chat</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -147,7 +146,7 @@ Disconnected</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkEntry" id="channel_name_entry">
+                  <object class="GtkEntry" id="chat_name_entry">
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
                     <property name="placeholder-text" translatable="yes">Name</property>
@@ -159,7 +158,7 @@ Disconnected</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkEntry" id="channel_password_entry">
+                  <object class="GtkEntry" id="chat_password_entry">
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
                     <property name="placeholder-text" translatable="yes">Password (optional)</property>
@@ -171,7 +170,7 @@ Disconnected</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkButton" id="create_channel_button">
+                  <object class="GtkButton" id="create_chat_button">
                     <property name="label" translatable="yes">Create</property>
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
@@ -212,7 +211,7 @@ Disconnected</property>
                   <object class="GtkLabel">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="label" translatable="yes">Channels</property>
+                    <property name="label" translatable="yes">Chats</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -233,7 +232,7 @@ Disconnected</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkButton" id="channel_join">
+                  <object class="GtkButton" id="chat_join">
                     <property name="label" translatable="yes">Join</property>
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
@@ -246,10 +245,9 @@ Disconnected</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkTreeView" id="channel_list">
+                  <object class="GtkTreeView" id="chat_list">
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
-                    <property name="model">channel_list_buffer</property>
                     <child internal-child="selection">
                       <object class="GtkTreeSelection"/>
                     </child>
@@ -303,7 +301,6 @@ Disconnected</property>
                   <object class="GtkTreeView" id="user_list">
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
-                    <property name="model">user_list_buffer</property>
                     <child internal-child="selection">
                       <object class="GtkTreeSelection"/>
                     </child>
@@ -337,7 +334,7 @@ Disconnected</property>
               <object class="GtkLabel">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="label" translatable="yes">Current Channel</property>
+                <property name="label" translatable="yes">Current Chat</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -363,7 +360,7 @@ Disconnected</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkTreeView" id="channel_messages">
+                  <object class="GtkTreeView" id="chat_messages">
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
                     <property name="model">channel_messages_buffer</property>

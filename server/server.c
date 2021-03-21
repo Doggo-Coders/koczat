@@ -332,6 +332,7 @@ handle_disconnect(int connfd)
 			bitset_unset(g_users_ids, i);
 		}
 	}
+	--g_users_count;
 }
 
 int
