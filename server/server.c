@@ -277,7 +277,7 @@ gen_userid(bool set)
 struct GetChatListResp *
 get_chat_list(uint16_t userid, const struct GetChatList *req, struct GetChatListResp *resp, size_t *restrict respsz)
 {
-	struct Chat *nextchat = resp->chats;
+	struct Chat *nextchat;
 	size_t sz = sizeof(struct GetChatListResp);
 	
 	resp->status = STAT_OK;
@@ -285,7 +285,9 @@ get_chat_list(uint16_t userid, const struct GetChatList *req, struct GetChatList
 	
 	for (int i = 0; i < MAX_CHATS; ++i) {
 		if (bitset_get(g_chats_ids, i)) {
-			resp = realloc(resp, sz += sizeof(struct Chat) + g_chats[i].namelen);
+			resp = realloc(resp, sz + sizeof(struct Chat) + g_chats[i].namelen);
+			nextchat = (void *) ((uint8_t *) resp + sz);
+			sz += sizeof(struct Chat) + g_chats[i].namelen;
 			nextchat->id = htons(i + 1);
 			nextchat->isopen = g_chats[i].pass == NULL;
 			nextchat->namelen = htons(g_chats[i].namelen);
@@ -301,7 +303,7 @@ get_chat_list(uint16_t userid, const struct GetChatList *req, struct GetChatList
 struct GetUserListResp *
 get_user_list(uint16_t userid, const struct GetUserList *req, struct GetUserListResp *resp, size_t *restrict respsz)
 {
-	struct User *nextuser = resp->users;
+	struct User *nextuser;
 	size_t sz = sizeof(struct GetUserListResp);
 	
 	resp->status = STAT_OK;
@@ -309,11 +311,12 @@ get_user_list(uint16_t userid, const struct GetUserList *req, struct GetUserList
 	
 	for (int i = 0; i < MAX_USERS; ++i) {
 		if (bitset_get(g_users_ids, i)) {
-			resp = realloc(resp, sz += sizeof(struct User) + g_users[i].namelen);
+			resp = realloc(resp, sz + sizeof(struct User) + g_users[i].namelen);
+			nextuser = (void *) ((uint8_t *) resp + sz);
+			sz += sizeof(struct User) + g_users[i].namelen;
 			nextuser->id = htons(i + 1);
 			nextuser->namelen = htons(g_users[i].namelen);
 			memcpy(nextuser->name, g_users[i].name, g_users[i].namelen);
-			nextuser = (void *) nextuser + sizeof(struct User) + g_users[i].namelen;
 		}
 	}
 	
@@ -326,6 +329,7 @@ handle_disconnect(int connfd)
 {
 	for (int i = 0; i < MAX_USERS; ++i) {
 		if (g_users[i].connfd == connfd) {
+			log_info("User %s (ID %hu) disconnected.", g_users[i].name, i+1);
 			free(g_users[i].name);
 			g_users[i].connfd = g_users[i].namelen = 0;
 			g_users[i].name = NULL;
