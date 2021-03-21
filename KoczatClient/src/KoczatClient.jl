@@ -30,6 +30,7 @@ function main(args = ARGS)
 	
 	signal_connect(on_connect_button_clicked, gtkbuilder["connect_button"], :clicked)
 	signal_connect(on_refresh_button_clicked, gtkbuilder["refresh_button"], :clicked)
+	signal_connect(on_create_chat_button_clicked, gtkbuilder["create_chat_button"], :clicked)
 	
 	@info "Showing window"
 	showall(window)
@@ -93,12 +94,41 @@ function on_connect_button_clicked(btn)
 	end
 end
 
+function on_create_chat_button_clicked(btn)
+	name = get_gtk_property(gtkbuilder["chat_name_entry"], :text, String)
+	pass = get_gtk_property(gtkbuilder["chat_password_entry"], :text, String)
+	namelenbytes = as_bytes(hton(convert(UInt16, length(name))))
+	passlenbytes = as_bytes(hton(convert(UInt16, length(pass))))
+	
+	req = vcat(UInt8[OP_CREATE_OPEN_CHAT], namelenbytes, as_bytes(name))
+	write(conn, req)
+	bytes = readavailable(conn)
+	status = bytes[2]
+	
+	if status == STAT_FU
+		set_status_fu()
+		return
+	elseif status == STAT_CREATE_OPEN_CHAT_BAD_NAME
+		set_status_err("Bad chat name")
+		return
+	elseif status == STAT_CREATE_OPEN_CHAT_TOO_MANY
+		set_status_err("Too many chats")
+		return
+	end
+	
+	id = ntoh(bytes2u16(bytes[3:4]))
+	
+	set_status("Chat created (ID $id)")
+end
+
 function on_refresh_button_clicked(btn)
 	try
-		update_chat_list()
-		update_user_list()
+		update_chat_list() || return
+		update_user_list() || return
+		set_status("Lists refreshed")
 	catch e
 		@error e
+		set_status_err()
 	end
 end
 
@@ -109,7 +139,7 @@ function update_chat_list()
 	
 	if status == STAT_FU
 		set_status_fu()
-		return
+		return false
 	end
 	
 	chatslen = ntoh(bytes2u16(bytes[3:4]))
@@ -122,8 +152,10 @@ function update_chat_list()
 		name = String(bytes[ind+5:ind+5+namelen-1])
 		@info "Chat #$id: $name (len $namelen); open: $is_open"
 		push!(chat_list_store, (id, is_open, name))
-		ind += 4 + namelen
+		ind += 5 + namelen
 	end
+	
+	return true
 end
 
 function update_user_list()
@@ -133,7 +165,7 @@ function update_user_list()
 	
 	if status == STAT_FU
 		set_status_fu()
-		return
+		return false
 	end
 	
 	userslen = ntoh(bytes2u16(bytes[3:4]))
@@ -145,8 +177,10 @@ function update_user_list()
 		name = String(bytes[ind+4:ind+4+namelen-1])
 		@info "User #$id: $name (len $namelen)"
 		push!(user_list_store, (id, name))
-		ind += 3 + namelen
+		ind += 4 + namelen
 	end
+	
+	return true
 end
 
 end # module

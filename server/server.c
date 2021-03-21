@@ -244,7 +244,7 @@ uint16_t
 gen_chatid(bool set)
 {
 	for (int i = 0; i < MAX_CHATS/8; ++i) {
-		for (int off = 7; off >= 0; --off) {
+		for (int off = 0; off < 8; ++off) {
 			if (!(g_chats_ids[i] & (1 << off))) {
 				int ind = 8*i + off;
 				if (set) {
@@ -261,7 +261,7 @@ uint16_t
 gen_userid(bool set)
 {
 	for (int i = 0; i < MAX_USERS/8; ++i) {
-		for (int off = 7; off >= 0; --off) {
+		for (int off = 0; off < 8; ++off) {
 			if (!(g_users_ids[i] & (1 << off))) {
 				int ind = 8*i + off;
 				if (set) {
@@ -277,20 +277,20 @@ gen_userid(bool set)
 struct GetChatListResp *
 get_chat_list(uint16_t userid, const struct GetChatList *req, struct GetChatListResp *resp, size_t *restrict respsz)
 {
-	int p = 0;
+	struct Chat *nextchat = resp->chats;
 	size_t sz = sizeof(struct GetChatListResp);
 	
 	resp->status = STAT_OK;
 	resp->chatslen = htons(g_chats_count);
 	
-	for (int i = 0; i < g_chats_count; ++i) {
+	for (int i = 0; i < MAX_CHATS; ++i) {
 		if (bitset_get(g_chats_ids, i)) {
-			resp = realloc(resp, sz+= sizeof(struct Chat) + g_chats[i].namelen);
-			resp->chats[i].id = htons(i + 1);
-			resp->chats[i].isopen = g_chats[i].pass == NULL;
-			resp->chats[i].namelen = htons(g_chats[i].namelen);
-			memcpy(resp->chats[p].name, g_chats[i].name, g_chats[i].namelen);
-			++p;
+			resp = realloc(resp, sz += sizeof(struct Chat) + g_chats[i].namelen);
+			nextchat->id = htons(i + 1);
+			nextchat->isopen = g_chats[i].pass == NULL;
+			nextchat->namelen = htons(g_chats[i].namelen);
+			memcpy(nextchat->name, g_chats[i].name, g_chats[i].namelen);
+			nextchat = (void *) nextchat + sizeof(struct Chat) + g_chats[i].namelen;
 		}
 	}
 	
@@ -301,7 +301,7 @@ get_chat_list(uint16_t userid, const struct GetChatList *req, struct GetChatList
 struct GetUserListResp *
 get_user_list(uint16_t userid, const struct GetUserList *req, struct GetUserListResp *resp, size_t *restrict respsz)
 {
-	int p = 0;
+	struct User *nextuser = resp->users;
 	size_t sz = sizeof(struct GetUserListResp);
 	
 	resp->status = STAT_OK;
@@ -310,10 +310,10 @@ get_user_list(uint16_t userid, const struct GetUserList *req, struct GetUserList
 	for (int i = 0; i < MAX_USERS; ++i) {
 		if (bitset_get(g_users_ids, i)) {
 			resp = realloc(resp, sz += sizeof(struct User) + g_users[i].namelen);
-			resp->users[p].id = htons(i + 1);
-			resp->users[p].namelen = htons(g_users[i].namelen);
-			memcpy(resp->users[p].name, g_users[i].name, g_users[i].namelen);
-			++p;
+			nextuser->id = htons(i + 1);
+			nextuser->namelen = htons(g_users[i].namelen);
+			memcpy(nextuser->name, g_users[i].name, g_users[i].namelen);
+			nextuser = (void *) nextuser + sizeof(struct User) + g_users[i].namelen;
 		}
 	}
 	
