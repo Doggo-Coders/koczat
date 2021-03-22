@@ -10,19 +10,13 @@ struct Message
 	msg:: String
 end
 
-struct DM
-	senderid:: UInt16
-	sendername:: String
-	recipientid:: UInt16
-	recipientname:: String
-	msg:: String
-end
-
 const glade_xml = read(joinpath(@__DIR__, "../chatapp.glade"), String)
 
 gtkbuilder = nothing
 window = nothing
 conn = nothing
+ouruserid = nothing
+ourusername = nothing
 user_list_store = nothing
 chat_list_store = nothing
 message_list_store = nothing
@@ -63,6 +57,8 @@ function main(args = ARGS)
 	signal_connect(on_refresh_button_clicked, gtkbuilder["refresh_button"], :clicked)
 	signal_connect(on_create_chat_button_clicked, gtkbuilder["create_chat_button"], :clicked)
 	signal_connect(on_chat_join_clicked, gtkbuilder["chat_join"], :clicked)
+	signal_connect(on_send_message, gtkbuilder["message_send"], :activate)
+	signal_connect(on_send_message, gtkbuilder["message_send"], :icon_press)
 	
 	GAccessor.model(gtkbuilder["user_search_completion"], GtkTreeModel(user_list_store))
 	
@@ -178,6 +174,8 @@ function on_connect_button_clicked(btn)
 				set_gtk_property!(btn, :label, "Disconnect")
 				update_chat_list() || return
 				update_user_list() || return
+				global ouruserid = ntoh(bytes2u16(bytes[3:4]))
+				global ourusername = username
 				set_status("Connected")
 			elseif status == STAT_FU
 				set_status_fu()
@@ -268,6 +266,31 @@ function repopulate_message_list()
 	empty!(message_list_store)
 	messages:: Vector{Message} = chat_messages[current_chat]
 	isempty(messages) || append!(message_list_store, [(msdg.userid, msg.username, msg.msg) for msg in messages])
+end
+
+function on_send_message(entry, ...)
+	msg = get_gtk_property(entry, :text, String)
+	chatid = UInt16(current_chat)
+	msglenbytes = (as_bytes ∘ hton ∘ UInt16 ∘ length)(msg)
+	
+	req = vcat(UInt8[OP_SEND_MESSAGE], as_bytes(hton(chatid)), msglenbytes, as_bytes(msg))
+	write(conn, req)
+	bytes = readavailable(conn)
+	status = bytes[2]
+	
+	if status == STAT_FU
+		set_status_fu()
+		return
+	elseif status == STAT_SEND_MESSAGE_BAD_CHAT
+		set_status_err("Bad chat")
+		return
+	elseif status == STAT_SEND_MESSAGE_NOT_IN_CHAT
+		set_status_err("Not in chat")
+		return
+	end
+	
+	push!(chat_messages[chatid], Message(ouruserid, ourusername, msg))
+	push!(message_list_store, (ouruserid, ourusername, msg))
 end
 
 function update_chat_list()
