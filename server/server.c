@@ -185,7 +185,7 @@ join_open_chat(uint16_t userid, const struct JoinOpenChat *req, struct JoinOpenC
 {
 	struct chat *chat;
 	
-	if (req->id > MAX_CHATS || !bitset_get(g_chats_ids, req->id)) {
+	if (req->id > MAX_CHATS || !bitset_get(g_chats_ids, req->id - 1)) {
 		resp->status = STAT_JOIN_OPEN_CHAT_BAD_CHAT;
 		return;
 	}
@@ -219,12 +219,12 @@ join_password_chat(uint16_t userid, const struct JoinPasswordChat *req, struct J
 {
 	struct chat *chat;
 	
-	if (req->id > MAX_CHATS || !bitset_get(g_chats_ids, req->id)) {
+	if (req->id > MAX_CHATS || !bitset_get(g_chats_ids, req->id - 1)) {
 		resp->status = STAT_JOIN_PASSWORD_CHAT_BAD_CHAT;
 		return;
 	}
 	
-	chat = g_chats + req->id - 1;
+	chat = &g_chats[req->id - 1];
 	
 	if (bitset_get(chat->users, userid - 1)) {
 		resp->status = STAT_JOIN_PASSWORD_CHAT_ALREADY_JOINED;
@@ -354,13 +354,15 @@ handle_disconnect(int connfd)
 			
 			for (int j = 0; j < MAX_CHATS; ++j) {
 				if (bitset_get(g_chats_ids, j)) {
-					bitset_unset(g_chats[j].users, i);
-					--g_chats[j].users_count;
-					if (g_chats[j].users_count == 0) {
-						bitset_unset(g_chats_ids, j);
-						free(g_chats[j].name);
-						free(g_chats[j].pass);
-						--g_chats_count;
+					if (bitset_get(g_chats[j].users, i)) {
+						bitset_unset(g_chats[j].users, i);
+						--g_chats[j].users_count;
+						if (g_chats[j].users_count == 0) {
+							bitset_unset(g_chats_ids, j);
+							free(g_chats[j].name);
+							free(g_chats[j].pass);
+							--g_chats_count;
+						}
 					}
 				}
 			}
@@ -449,7 +451,7 @@ handle_new_connection(int connfd)
 		.name = strndup(hello->name, hello->namelen)
 	};
 	
-	log_info("New connection: user %s, (ID %hu).", g_users[userid - 1].name, userid);
+	log_info("New connection: user %s (ID %hu).", g_users[userid - 1].name, userid);
 	
 	return 1;
 }

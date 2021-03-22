@@ -67,7 +67,7 @@ function on_chat_join_clicked(btn)
 		end
 		
 		chat = chat_list_store[selected(chatsel)]
-		chatid = chat[1]
+		chatid = UInt16(chat[1])
 		
 		if isempty(pass)
 			req = vcat(UInt8[OP_JOIN_OPEN_CHAT], as_bytes(hton(chatid)))
@@ -86,6 +86,7 @@ function on_chat_join_clicked(btn)
 			else
 				set_status("Joined chat")
 				chat_list_store[selected(chatsel), 4] = true
+				@info "Joined chat $chat"
 			end
 		else
 			passlenbytes = as_bytes(hton(UInt16(length(pass))))
@@ -107,6 +108,7 @@ function on_chat_join_clicked(btn)
 			else
 				set_status("Joined chat")
 				chat_list_store[selected(chatsel), 4] = true
+				@info "Joined chat $chat"
 			end
 		end
 	catch e
@@ -169,7 +171,7 @@ function on_create_chat_button_clicked(btn)
 		namelenbytes = as_bytes(hton(convert(UInt16, length(name))))
 		passlenbytes = as_bytes(hton(convert(UInt16, length(pass))))
 		
-		if !isempty(pass)
+		if isempty(pass)
 			req = vcat(UInt8[OP_CREATE_OPEN_CHAT], namelenbytes, as_bytes(name))
 			write(conn, req)
 			bytes = readavailable(conn)
@@ -205,7 +207,7 @@ function on_create_chat_button_clicked(btn)
 		
 		id = ntoh(bytes2u16(bytes[3:4]))
 		
-		set_status("Chat created (ID $id)")
+		update_chat_list() && set_status("Chat created (ID $id)")
 	catch e
 		@error e
 	end
