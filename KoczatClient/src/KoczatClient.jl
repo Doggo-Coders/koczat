@@ -27,11 +27,13 @@ function main(args = ARGS)
 	push!(gtkbuilder["chat_list"], GtkTreeViewColumn("ID", GtkCellRendererText(), Dict([("text", 0)])))
 	push!(gtkbuilder["chat_list"], GtkTreeViewColumn("Open", GtkCellRendererText(), Dict([("text", 1)])))
 	push!(gtkbuilder["chat_list"], GtkTreeViewColumn("Name", GtkCellRendererText(), Dict([("text", 2)])))
-	
+    
 	signal_connect(on_connect_button_clicked, gtkbuilder["connect_button"], :clicked)
 	signal_connect(on_refresh_button_clicked, gtkbuilder["refresh_button"], :clicked)
 	signal_connect(on_create_chat_button_clicked, gtkbuilder["create_chat_button"], :clicked)
-	
+
+
+  GAccessor.model(gtkbuilder["user_search_completion"], GtkTreeModel(user_list_store))
 	@info "Showing window"
 	showall(window)
 	
