@@ -558,14 +558,11 @@ handle_packet(int connfd, void *buf, size_t reqsz)
 	case OP_SEND_DIRECT: {
 		struct SendDirect *req = buf;
 		struct SendDirectResp resp;
-		fprintf(stderr, "ABABABABABABABABABABABABABAB\n"); fflush(stderr);
 		if (reqsz < 1 + 2 + 2 || reqsz < 1 + 2 + 2 + (req->msglen = ntohs(req->msglen))) {
 			goto invalid;
 		}
-		fprintf(stderr, "CCCCCCCCCCCCCCCCCCCCCCC\n"); fflush(stderr);
 		req->userid = ntohs(req->userid);
 		resp.op = OP_SEND_DIRECT_RESP;
-		fprintf(stderr, "REEEEEEEEEEEEEEEEEEEEEEEEEEE\n"); fflush(stderr);
 		send_direct(userid, req, &resp);
 		sendret = send_packet(connfd, &resp, sizeof(struct SendDirectResp));
 		send_receive_direct(userid, req);
@@ -656,18 +653,13 @@ receive_direct(uint16_t userid, const struct SendDirect *req, struct ReceiveDire
 void
 send_direct(uint16_t userid, const struct SendDirect *req, struct SendDirectResp *restrict resp)
 {
-	fprintf(stderr, "OUOUOUOUOUOUOUOUOUOUOUO %p\n", req); fflush(stderr);
 	if (req->userid > MAX_USERS || req->userid == 0 || !bitset_get(g_users_ids, req->userid - 1)) {
-		fprintf(stderr, "IIIIIIIIIIOOOOOOOOOOIIIIIII\n"); fflush(stderr);
 		resp->status = STAT_SEND_DIRECT_BAD_USER;
 		return;
 	}
-	fprintf(stderr, "WOOOOOOOOOOOO\n"); fflush(stderr);
 	
 	resp->status = STAT_OK;
-	
-	fprintf(stderr, "AAAAAAAAAAAAAAAAAAAA\n");
-	fflush(stderr);
+
 	log_info(
 		"User %s (ID %hu) sent a direct message to %s (ID %hu).",
 		g_users[userid-1].name, userid,

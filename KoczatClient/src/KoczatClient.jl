@@ -83,7 +83,7 @@ function main(args = ARGS)
 	@info "Showing window"
 	showall(window)
 	
-	g_timeout_add(update_from_events, 100)
+	g_timeout_add(update_from_events, 20)
 	
 	@async Gtk.main()
 	Gtk.waitforsignal(window, :destroy)
@@ -374,6 +374,18 @@ function update_chat_list()
 	end
 	
 	chatslen = ntoh(bytes2u16(bytes[3:4]))
+
+  joined = Dict{UInt16, Bool}()
+  
+    for i in 1:256
+        try
+            id = chat_list_store[i, 1]
+            val = chat_list_store[i, 4]
+            joined[id] = val 
+        catch
+            break
+        end
+    end
 	empty!(chat_list_store)
 	ind = 5
 	for i in 1:chatslen
@@ -383,7 +395,13 @@ function update_chat_list()
 		namelen = ntoh(bytes2u16(bytes[ind+3:ind+4]))
 		name = String(bytes[ind+5:ind+5+namelen-1])
 		@info "Chat #$id: $name (len $namelen); open: $is_open"
-		push!(chat_list_store, (id, is_open, name))
+      is_joined = false
+      try
+          is_joined = joined[id]
+      catch
+          is_joined = false
+      end
+		push!(chat_list_store, (id, is_open, name, is_joined))
 		ind += 5 + namelen
 	end
 	
