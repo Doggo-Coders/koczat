@@ -139,6 +139,8 @@ create_open_chat(uint16_t userid, const struct CreateOpenChat *req, struct Creat
 	
 	resp->status = STAT_OK;
 	resp->id = chatid;
+	
+	log_info("New open chat: %s (ID %hu).", g_chats[chatid-1].name, chatid);
 }
 
 void
@@ -162,6 +164,8 @@ create_password_chat(uint16_t userid, const struct CreatePasswordChat *req, stru
 	
 	resp->status = STAT_OK;
 	resp->id = chatid;
+	
+	log_info("New password chat: %s (ID %hu).", g_chats[chatid-1].name, chatid);
 }
 
 void
@@ -202,6 +206,12 @@ join_open_chat(uint16_t userid, const struct JoinOpenChat *req, struct JoinOpenC
 	bitset_set(chat->users, userid - 1);
 	
 	resp->status = STAT_OK;
+	
+	log_info(
+		"User %s (ID %hu) joined open chat %s (ID %hu).",
+		g_users[userid-1].name, userid,
+		chat->name, req->id
+	);
 }
 
 void
@@ -238,6 +248,12 @@ join_password_chat(uint16_t userid, const struct JoinPasswordChat *req, struct J
 	bitset_set(chat->users, userid - 1);
 	
 	resp->status = STAT_OK;
+	
+	log_info(
+		"User %s (ID %hu) joined password chat %s (ID %hu).",
+		g_users[userid-1].name, userid,
+		chat->name, req->id
+	);
 }
 
 uint16_t
@@ -330,10 +346,24 @@ handle_disconnect(int connfd)
 	for (int i = 0; i < MAX_USERS; ++i) {
 		if (g_users[i].connfd == connfd) {
 			log_info("User %s (ID %hu) disconnected.", g_users[i].name, i+1);
+			
 			free(g_users[i].name);
 			g_users[i].connfd = g_users[i].namelen = 0;
 			g_users[i].name = NULL;
 			bitset_unset(g_users_ids, i);
+			
+			for (int j = 0; j < MAX_CHATS; ++j) {
+				if (bitset_get(g_chats_ids, j)) {
+					bitset_unset(g_chats[j].users, i);
+					--g_chats[j].users_count;
+					if (g_chats[j].users_count == 0) {
+						bitset_unset(g_chats_ids, j);
+						free(g_chats[j].name);
+						free(g_chats[j].pass);
+						--g_chats_count;
+					}
+				}
+			}
 		}
 	}
 	--g_users_count;
@@ -419,7 +449,7 @@ handle_new_connection(int connfd)
 		.name = strndup(hello->name, hello->namelen)
 	};
 	
-	log_info("New connection.");
+	log_info("New connection: user %s, (ID %hu).", g_users[userid - 1].name, userid);
 	
 	return 1;
 }
@@ -552,7 +582,7 @@ handle_packet(int connfd, void *buf, size_t reqsz)
 	
 	goto skip;
 invalid:
-	log_info("Client sent invalid request.");
+	log_info("User %s (ID %hu) sent an invalid request.", g_users[userid-1].name, userid);
 	return 0;
 skip:
 	return 1;
@@ -626,6 +656,12 @@ send_direct(uint16_t userid, const struct SendDirect *req, struct SendDirectResp
 	}
 	
 	resp->status = STAT_OK;
+	
+	log_info(
+		"User %s (ID %hu) sent a direct message to %s (ID %hu).",
+		g_users[userid-1].name, userid,
+		g_users[req->userid-1].name, req->userid
+	);
 }
 
 void
@@ -646,6 +682,12 @@ send_message(uint16_t userid, const struct SendMessage *req, struct SendMessageR
 	}
 	
 	resp->status = STAT_OK;
+	
+	log_info(
+		"User %s (ID %hu) sent a message to chat %s (ID %hu).",
+		g_users[userid-1].name, userid,
+		g_chats[req->chatid-1].name, req->chatid
+	);
 }
 
 int
