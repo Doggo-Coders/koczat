@@ -241,11 +241,18 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkTreeView" id="chat_list">
+                  <object class="GtkScrolledWindow">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
-                    <child internal-child="selection">
-                      <object class="GtkTreeSelection"/>
+                    <property name="shadow_type">in</property>
+                    <child>
+                      <object class="GtkTreeView" id="chat_list">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <child internal-child="selection">
+                          <object class="GtkTreeSelection"/>
+                        </child>
+                      </object>
                     </child>
                   </object>
                   <packing>
@@ -279,11 +286,18 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkTreeView" id="user_list">
+                  <object class="GtkScrolledWindow">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
-                    <child internal-child="selection">
-                      <object class="GtkTreeSelection"/>
+                    <property name="shadow_type">in</property>
+                    <child>
+                      <object class="GtkTreeView" id="user_list">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <child internal-child="selection">
+                          <object class="GtkTreeSelection"/>
+                        </child>
+                      </object>
                     </child>
                   </object>
                   <packing>
@@ -357,7 +371,7 @@
                     </child>
                   </object>
                   <packing>
-                    <property name="expand">False</property>
+                    <property name="expand">True</property>
                     <property name="fill">True</property>
                     <property name="position">1</property>
                   </packing>
@@ -442,7 +456,7 @@
                     </child>
                   </object>
                   <packing>
-                    <property name="expand">False</property>
+                    <property name="expand">True</property>
                     <property name="fill">True</property>
                     <property name="position">2</property>
                   </packing>
