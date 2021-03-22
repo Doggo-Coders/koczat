@@ -653,7 +653,7 @@ receive_direct(uint16_t userid, const struct SendDirect *req, struct ReceiveDire
 void
 send_direct(uint16_t userid, const struct SendDirect *req, struct SendDirectResp *restrict resp)
 {
-	if (req->userid > MAX_USERS || !bitset_get(g_users_ids, req->userid)) {
+	if (req->userid > MAX_USERS || !bitset_get(g_users_ids, req->userid - 1)) {
 		resp->status = STAT_SEND_DIRECT_BAD_USER;
 		return;
 	}
@@ -672,7 +672,7 @@ send_message(uint16_t userid, const struct SendMessage *req, struct SendMessageR
 {
 	struct chat *chat;
 	
-	if (req->chatid > MAX_CHATS || !bitset_get(g_chats_ids, req->chatid)) {
+	if (req->chatid > MAX_CHATS || !bitset_get(g_chats_ids, req->chatid - 1)) {
 		resp->status = STAT_SEND_MESSAGE_BAD_CHAT;
 		return;
 	}
