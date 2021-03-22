@@ -341,15 +341,23 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkTreeView" id="chat_messages">
+                  <object class="GtkScrolledWindow">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
-                    <child internal-child="selection">
-                      <object class="GtkTreeSelection"/>
+                    <property name="shadow_type">in</property>
+                    <child>
+                      <object class="GtkTreeView" id="chat_messages">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="search_column">1</property>
+                        <child internal-child="selection">
+                          <object class="GtkTreeSelection"/>
+                        </child>
+                      </object>
                     </child>
                   </object>
                   <packing>
-                    <property name="expand">True</property>
+                    <property name="expand">False</property>
                     <property name="fill">True</property>
                     <property name="position">1</property>
                   </packing>
@@ -418,15 +426,23 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkTreeView" id="direct_messages">
+                  <object class="GtkScrolledWindow">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
-                    <child internal-child="selection">
-                      <object class="GtkTreeSelection"/>
+                    <property name="shadow_type">in</property>
+                    <child>
+                      <object class="GtkTreeView" id="direct_messages">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="search_column">1</property>
+                        <child internal-child="selection">
+                          <object class="GtkTreeSelection"/>
+                        </child>
+                      </object>
                     </child>
                   </object>
                   <packing>
-                    <property name="expand">True</property>
+                    <property name="expand">False</property>
                     <property name="fill">True</property>
                     <property name="position">2</property>
                   </packing>
