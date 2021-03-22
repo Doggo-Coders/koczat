@@ -558,11 +558,14 @@ handle_packet(int connfd, void *buf, size_t reqsz)
 	case OP_SEND_DIRECT: {
 		struct SendDirect *req = buf;
 		struct SendDirectResp resp;
+		fprintf(stderr, "ABABABABABABABABABABABABABAB\n"); fflush(stderr);
 		if (reqsz < 1 + 2 + 2 || reqsz < 1 + 2 + 2 + (req->msglen = ntohs(req->msglen))) {
 			goto invalid;
 		}
+		fprintf(stderr, "CCCCCCCCCCCCCCCCCCCCCCC\n"); fflush(stderr);
 		req->userid = ntohs(req->userid);
 		resp.op = OP_SEND_DIRECT_RESP;
+		fprintf(stderr, "REEEEEEEEEEEEEEEEEEEEEEEEEEE\n"); fflush(stderr);
 		send_direct(userid, req, &resp);
 		sendret = send_packet(connfd, &resp, sizeof(struct SendDirectResp));
 		send_receive_direct(userid, req);
@@ -653,13 +656,18 @@ receive_direct(uint16_t userid, const struct SendDirect *req, struct ReceiveDire
 void
 send_direct(uint16_t userid, const struct SendDirect *req, struct SendDirectResp *restrict resp)
 {
-	if (req->userid > MAX_USERS || !bitset_get(g_users_ids, req->userid - 1)) {
+	fprintf(stderr, "OUOUOUOUOUOUOUOUOUOUOUO %p\n", req); fflush(stderr);
+	if (req->userid > MAX_USERS || req->userid == 0 || !bitset_get(g_users_ids, req->userid - 1)) {
+		fprintf(stderr, "IIIIIIIIIIOOOOOOOOOOIIIIIII\n"); fflush(stderr);
 		resp->status = STAT_SEND_DIRECT_BAD_USER;
 		return;
 	}
+	fprintf(stderr, "WOOOOOOOOOOOO\n"); fflush(stderr);
 	
 	resp->status = STAT_OK;
 	
+	fprintf(stderr, "AAAAAAAAAAAAAAAAAAAA\n");
+	fflush(stderr);
 	log_info(
 		"User %s (ID %hu) sent a direct message to %s (ID %hu).",
 		g_users[userid-1].name, userid,
@@ -672,7 +680,7 @@ send_message(uint16_t userid, const struct SendMessage *req, struct SendMessageR
 {
 	struct chat *chat;
 	
-	if (req->chatid > MAX_CHATS || !bitset_get(g_chats_ids, req->chatid - 1)) {
+	if (req->chatid > MAX_CHATS || req->chatid == 0 || !bitset_get(g_chats_ids, req->chatid - 1)) {
 		resp->status = STAT_SEND_MESSAGE_BAD_CHAT;
 		return;
 	}
@@ -708,7 +716,7 @@ send_receive_direct(uint16_t userid, const struct SendDirect *req)
 	notif->op = OP_RECEIVE_DIRECT;
 	receive_direct(userid, req, notif);
 	
-	if (send_packet(g_users[req->userid].connfd, notif, sizeof(struct ReceiveDirect) + req->msglen) < 0) {
+	if (send_packet(g_users[req->userid-1].connfd, notif, sizeof(struct ReceiveDirect) + req->msglen) < 0) {
 		GET_ERR;
 		switch (err) {
 		case ECONNRESET:
@@ -733,7 +741,7 @@ send_receive_message(uint16_t userid, const struct SendMessage *req)
 	receive_message(userid, req, notif);
 	
 	for (int i = 0; i < MAX_USERS; ++i) {
-		if (bitset_get(g_chats[req->chatid].users, i)) {
+		if (bitset_get(g_chats[req->chatid-1].users, i)) {
 			// don't send to sender, they've already gotten the SendMessageResp
 			if (i + 1 == userid) {
 				continue;

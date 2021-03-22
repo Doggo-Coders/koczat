@@ -1,6 +1,6 @@
 module KoczatClient
 
-using Gtk, Sockets, Logging
+using Gtk, Sockets, Logging, Base.Threads
 
 include("common.jl")
 
@@ -23,6 +23,16 @@ message_list_store = nothing
 chat_messages = nothing
 current_chat = nothing
 direct_list_store = nothing
+event_loop_task = nothing
+continue_event_loop = nothing
+awaited_packet_channel = nothing
+forced_disconnected = nothing
+user_joined_chat = nothing
+received_message = nothing
+received_direct = nothing
+user_joined_chat_lock = nothing
+received_message_lock = nothing
+received_direct_lock = nothing
 
 julia_main() = (main(); Cint(0))
 function main(args = ARGS)
@@ -33,6 +43,12 @@ function main(args = ARGS)
 	global message_list_store = GtkListStore(UInt16, String, String)
 	global chat_messages = Dict{UInt16, Vector{Message}}()
 	global direct_list_store = GtkListStore(UInt16, String, UInt16, String, String)
+	global continue_event_loop = Atomic{Bool}(false)
+	global awaited_packet_channel = Channel{Vector{UInt8}}()
+	global forced_disconnected = Atomic{Bool}(false)
+	global user_joined_chat_lock = ReentrantLock()
+	global received_message_lock = ReentrantLock()
+	global received_direct_lock = ReentrantLock()
 	
 	GAccessor.model(gtkbuilder["user_list"], GtkTreeModel(user_list_store))
 	push!(gtkbuilder["user_list"], GtkTreeViewColumn("ID", GtkCellRendererText(), Dict([("text", 0)])))
@@ -67,9 +83,13 @@ function main(args = ARGS)
 	@info "Showing window"
 	showall(window)
 	
+	g_timeout_add(update_from_events, 100)
+	
 	@async Gtk.main()
 	Gtk.waitforsignal(window, :destroy)
 	
+	continue_event_loop[] = false
+	wait(event_loop_task)
 	conn === nothing || close(conn)
 end
 
@@ -105,7 +125,7 @@ function on_chat_join_clicked(btn)
 			if isempty(pass)
 				req = vcat(UInt8[OP_JOIN_OPEN_CHAT], as_bytes(hton(chatid)))
 				write(conn, req)
-				bytes = readavailable(conn)
+				bytes = await_packet()
 				status = bytes[2]
 				
 				if status == STAT_FU
@@ -126,7 +146,7 @@ function on_chat_join_clicked(btn)
 				passlenbytes = as_bytes(hton(UInt16(length(pass))))
 				req = vcat(UInt8[OP_JOIN_PASSWORD_CHAT], as_bytes(hton(chatid)), passlenbytes, as_bytes(pass))
 				write(conn, req)
-				bytes = readavailable(conn)
+				bytes = await_packet()
 				status = bytes[2]
 				
 				if status == STAT_FU
@@ -168,16 +188,20 @@ function on_connect_button_clicked(btn)
 			req = vcat(UInt8[OP_HELLO], len, as_bytes(username))
 			@info req
 			global conn = connect(ip, port)
+			Sockets.nagle(conn, false)
+			Sockets.quickack(conn, false)
 			write(conn, req)
 			bytes = readavailable(conn)
 			status = bytes[2]
 			
 			if status == STAT_OK
 				set_gtk_property!(btn, :label, "Disconnect")
-				update_chat_list() || return
-				update_user_list() || return
 				global ouruserid = ntoh(bytes2u16(bytes[3:4]))
 				global ourusername = username
+				continue_event_loop[] = true
+				global event_loop_task = Threads.@spawn event_loop_fn()
+				update_chat_list() || return
+				update_user_list() || return
 				set_status("Connected")
 			elseif status == STAT_FU
 				set_status_fu()
@@ -199,6 +223,8 @@ function on_connect_button_clicked(btn)
 		set_gtk_property!(btn, :label, "Connect")
 		set_status("Disconnected")
 		global current_chat = nothing
+		continue_event_loop[] = false
+		wait(event_loop_task)
 		empty!.((chat_messages, user_list_store, message_list_store, chat_list_store))
 		@info "Disconnected"
 	end
@@ -214,7 +240,7 @@ function on_create_chat_button_clicked(btn)
 		if isempty(pass)
 			req = vcat(UInt8[OP_CREATE_OPEN_CHAT], namelenbytes, as_bytes(name))
 			write(conn, req)
-			bytes = readavailable(conn)
+			bytes = await_packet()
 			status = bytes[2]
 			
 			if status == STAT_FU
@@ -230,7 +256,7 @@ function on_create_chat_button_clicked(btn)
 		else
 			req = vcat(UInt8[OP_CREATE_PASSWORD_CHAT], namelenbytes, passlenbytes, as_bytes(name), as_bytes(pass))
 			write(conn, req)
-			bytes = readavailable(conn)
+			bytes = await_packet()
 			status = bytes[2]
 			
 			if status == STAT_FU
@@ -267,7 +293,9 @@ end
 function repopulate_message_list()
 	empty!(message_list_store)
 	messages:: Vector{Message} = chat_messages[current_chat]
-	isempty(messages) || append!(message_list_store, [(msdg.userid, msg.username, msg.msg) for msg in messages])
+	for msg in messages
+		push!(message_list_store, (msg.userid, msg.username, msg.msg))
+	end
 end
 
 function on_send_direct(entry, _...)
@@ -283,9 +311,10 @@ function on_send_direct(entry, _...)
 		userid, username = user_list_store[selected(usersel)]
 		msglenbytes = (as_bytes ∘ hton ∘ UInt16 ∘ length)(msg)
 		
-		req = vcat(UInt8[OP_SEND_DIRECT], as_bytes(hton(userid)), msglenbytes, as_bytes(msg))
+		req = vcat(UInt8[OP_SEND_DIRECT], as_bytes(hton(UInt16(userid))), msglenbytes, as_bytes(msg))
+		@info "RAWDATAAAA $req"
 		write(conn, req)
-		bytes = readavailable(conn)
+		bytes = await_packet()
 		status = bytes[2]
 		
 		if status == STAT_FU
@@ -312,7 +341,7 @@ function on_send_message(entry, _...)
 		req = vcat(UInt8[OP_SEND_MESSAGE], as_bytes(hton(chatid)), msglenbytes, as_bytes(msg))
 		@info "Sending message to chat $chatid: $req"
 		write(conn, req)
-		bytes = readavailable(conn)
+		bytes = await_packet()
 		status = bytes[2]
 		
 		if status == STAT_FU
@@ -336,7 +365,7 @@ end
 
 function update_chat_list()
 	write(conn, UInt8[OP_GET_CHAT_LIST])
-	bytes = readavailable(conn)
+	bytes = await_packet()
 	status = bytes[2]
 	
 	if status == STAT_FU
@@ -358,12 +387,12 @@ function update_chat_list()
 		ind += 5 + namelen
 	end
 	
-	return true
+	true
 end
 
 function update_user_list()
 	write(conn, UInt8[OP_GET_USER_LIST])
-	bytes = readavailable(conn)
+	bytes = await_packet()
 	status = bytes[2]
 	
 	if status == STAT_FU
@@ -383,7 +412,116 @@ function update_user_list()
 		ind += 4 + namelen
 	end
 	
-	return true
+	true
+end
+
+function await_packet():: Vector{UInt8}
+	take!(awaited_packet_channel)
+end
+
+function update_from_events()
+	if forced_disconnected[]
+		set_gtk_property!(gtkbuilder["connect_button"], :label, "Disconnect")
+		global current_chat = nothing
+		empty!.((chat_messages, user_list_store, message_list_store, chat_list_store))
+		forced_disconnected[] = false
+	end
+	lock(user_joined_chat_lock)
+	if user_joined_chat !== nothing
+		chatid, userid = user_joined_chat
+		@info "User #$userid joined chat #$chatid"
+		global user_joined_chat = nothing
+	end
+	unlock(user_joined_chat_lock)
+	lock(received_message_lock)
+	if received_message !== nothing
+		chatid, userid, msg = received_message
+		@info "Received message by user #$userid in chat #$chatid: $msg"
+		username = ""
+		for i in 1:256
+			u = user_list_store[i]
+			if u[1] == userid
+				username = u[2]
+				break
+			end
+		end
+		push!(chat_messages[current_chat], Message(userid, username, msg))
+		repopulate_message_list()
+		global received_message = nothing
+	end
+	unlock(received_message_lock)
+	lock(received_direct_lock)
+	if received_direct !== nothing
+		userid, msg = received_direct
+		@info "Received direct message from user #$userid: $msg"
+		username = ""
+		for i in 1:256
+			u = user_list_store[i]
+			if u[1] == userid
+				username = u[2]
+				break
+			end
+		end
+		push!(direct_list_store, (userid, username, ouruserid, ourusername, msg))
+		global received_direct = nothing
+	end
+	unlock(received_direct_lock)
+	Cint(true)
+end
+
+function event_loop_fn()
+	try
+		while continue_event_loop[]
+			bytes = readavailable(conn)
+			
+			if isempty(bytes)
+				@error "We received empty bytes in the event loop. This is not good!"
+				continue
+			end
+			
+			@info "In event loop we just got: $bytes"
+			
+			op = bytes[1]
+			if op == OP_FORCED_DISCONNECT
+				global conn = nothing
+				continue_event_loop[] = false
+				forced_disconnected[] = true
+			elseif op == OP_USER_JOINED_CHAT
+				lock(user_joined_chat_lock)
+				chatid = ntoh(bytes2u16(bytes[2:3]))
+				userid = ntoh(bytes2u16(bytes[4:5]))
+				global user_joined_chat = (chatid, userid)
+				unlock(user_joined_chat_lock)
+			elseif op == OP_RECEIVE_MESSAGE
+				lock(received_message_lock)
+				chatid = ntoh(bytes2u16(bytes[2:3]))
+				userid = ntoh(bytes2u16(bytes[4:5]))
+				msglen = ntoh(bytes2u16(bytes[6:7]))
+				msg = String(bytes[8:8+msglen-1])
+				global received_message = (chatid, userid, msg)
+				unlock(received_message_lock)
+			elseif op == OP_RECEIVE_DIRECT
+				lock(received_direct_lock)
+				userid = ntoh(bytes2u16(bytes[2:3]))
+				msglen = ntoh(bytes2u16(bytes[4:5]))
+				msg = String(bytes[6:6+msglen-1])
+				global received_direct = (userid, msg)
+				unlock(received_direct_lock)
+			elseif op in (
+				OP_GET_USER_LIST_RESP, OP_GET_CHAT_LIST_RESP, OP_CREATE_OPEN_CHAT_RESP,
+				OP_CREATE_PASSWORD_CHAT_RESP, OP_JOIN_OPEN_CHAT_RESP,
+				OP_JOIN_PASSWORD_CHAT_RESP, OP_SEND_MESSAGE_RESP, OP_SEND_DIRECT_RESP
+			)
+				put!(awaited_packet_channel, bytes)
+			else
+				@error "Server sent invalid opcode: $op. That's not good!"
+			end
+		end
+		@info "Event loop is ovah!"
+	catch e
+		@error "Error in event loop"
+		@error e
+	end
 end
 
 end # module
