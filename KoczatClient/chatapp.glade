@@ -2,9 +2,6 @@
 <!-- Generated with glade 3.36.0 -->
 <interface>
   <requires lib="gtk+" version="3.24"/>
-  <object class="GtkEntryCompletion" id="user_search_completion">
-    <property name="text_column">1</property>
-  </object>
   <object class="GtkApplicationWindow" id="application">
     <property name="name">application</property>
     <property name="can_focus">False</property>
@@ -249,6 +246,7 @@
                       <object class="GtkTreeView" id="chat_list">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
+                        <property name="search_column">1</property>
                         <child internal-child="selection">
                           <object class="GtkTreeSelection"/>
                         </child>
@@ -294,6 +292,7 @@
                       <object class="GtkTreeView" id="user_list">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
+                        <property name="search_column">1</property>
                         <child internal-child="selection">
                           <object class="GtkTreeSelection"/>
                         </child>
@@ -425,21 +424,6 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkSearchEntry" id="direct_user">
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="primary_icon_name">edit-find-symbolic</property>
-                    <property name="primary_icon_activatable">False</property>
-                    <property name="primary_icon_sensitive">False</property>
-                    <property name="completion">user_search_completion</property>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">1</property>
-                  </packing>
-                </child>
-                <child>
                   <object class="GtkScrolledWindow">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -448,7 +432,7 @@
                       <object class="GtkTreeView" id="direct_messages">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
-                        <property name="search_column">1</property>
+                        <property name="search_column">2</property>
                         <child internal-child="selection">
                           <object class="GtkTreeSelection"/>
                         </child>
@@ -458,7 +442,7 @@
                   <packing>
                     <property name="expand">True</property>
                     <property name="fill">True</property>
-                    <property name="position">2</property>
+                    <property name="position">1</property>
                   </packing>
                 </child>
               </object>
@@ -480,5 +464,8 @@
     <child type="titlebar">
       <placeholder/>
     </child>
+  </object>
+  <object class="GtkEntryCompletion" id="user_search_completion">
+    <property name="text_column">1</property>
   </object>
 </interface>
