@@ -269,28 +269,34 @@ function repopulate_message_list()
 end
 
 function on_send_message(entry, _...)
-	msg = get_gtk_property(entry, :text, String)
-	chatid = UInt16(current_chat)
-	msglenbytes = (as_bytes ∘ hton ∘ UInt16 ∘ length)(msg)
-	
-	req = vcat(UInt8[OP_SEND_MESSAGE], as_bytes(hton(chatid)), msglenbytes, as_bytes(msg))
-	write(conn, req)
-	bytes = readavailable(conn)
-	status = bytes[2]
-	
-	if status == STAT_FU
-		set_status_fu()
-		return
-	elseif status == STAT_SEND_MESSAGE_BAD_CHAT
-		set_status_err("Bad chat")
-		return
-	elseif status == STAT_SEND_MESSAGE_NOT_IN_CHAT
-		set_status_err("Not in chat")
-		return
+	try
+		msg = get_gtk_property(entry, :text, String)
+		chatid = UInt16(current_chat)
+		msglenbytes = (as_bytes ∘ hton ∘ UInt16 ∘ length)(msg)
+		
+		req = vcat(UInt8[OP_SEND_MESSAGE], as_bytes(hton(chatid)), msglenbytes, as_bytes(msg))
+		@info "Sending message to chat $chatid: $req"
+		write(conn, req)
+		bytes = readavailable(conn)
+		status = bytes[2]
+		
+		if status == STAT_FU
+			set_status_fu()
+			return
+		elseif status == STAT_SEND_MESSAGE_BAD_CHAT
+			set_status_err("Bad chat")
+			return
+		elseif status == STAT_SEND_MESSAGE_NOT_IN_CHAT
+			set_status_err("Not in chat")
+			return
+		end
+		
+		@info "Sent message to chat $chatid"
+		push!(chat_messages[chatid], Message(ouruserid, ourusername, msg))
+		push!(message_list_store, (ouruserid, ourusername, msg))
+	catch e
+		@error e
 	end
-	
-	push!(chat_messages[chatid], Message(ouruserid, ourusername, msg))
-	push!(message_list_store, (ouruserid, ourusername, msg))
 end
 
 function update_chat_list()
