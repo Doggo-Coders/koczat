@@ -34,6 +34,8 @@ function main(args = ARGS)
 	signal_connect(on_create_chat_button_clicked, gtkbuilder["create_chat_button"], :clicked)
 	signal_connect(on_chat_join_clicked, gtkbuilder["chat_join"], :clicked)
 	
+	GAccessor.model(gtkbuilder["user_search_completion"], GtkTreeModel(user_list_store))
+	
 	@info "Showing window"
 	showall(window)
 	
@@ -134,6 +136,8 @@ function on_connect_button_clicked(btn)
 			
 			if status == STAT_OK
 				set_gtk_property!(btn, :label, "Disconnect")
+				update_chat_list() || return
+				update_user_list() || return
 				set_status("Connected")
 			elseif status == STAT_FU
 				set_status_fu()

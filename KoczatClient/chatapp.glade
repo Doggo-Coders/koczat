@@ -1,35 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.38.2 -->
+<!-- Generated with glade 3.36.0 -->
 <interface>
   <requires lib="gtk+" version="3.24"/>
-  <object class="GtkListStore" id="channel_list_buffer"/>
-  <object class="GtkListStore" id="channel_messages_buffer"/>
-  <object class="GtkListStore" id="direct_messages_buffer"/>
-  <object class="GtkListStore" id="user_list_buffer"/>
   <object class="GtkEntryCompletion" id="user_search_completion">
-    <property name="model">user_list_buffer</property>
+    <property name="text_column">1</property>
   </object>
   <object class="GtkApplicationWindow" id="application">
     <property name="name">application</property>
-    <property name="can-focus">False</property>
+    <property name="can_focus">False</property>
     <property name="title" translatable="yes">Koczat</property>
     <child>
       <object class="GtkBox">
         <property name="visible">True</property>
-        <property name="can-focus">False</property>
+        <property name="can_focus">False</property>
         <property name="spacing">10</property>
         <property name="homogeneous">True</property>
         <child>
           <object class="GtkBox">
             <property name="visible">True</property>
-            <property name="can-focus">False</property>
+            <property name="can_focus">False</property>
             <property name="orientation">vertical</property>
             <property name="spacing">10</property>
             <property name="homogeneous">True</property>
             <child>
               <object class="GtkBox">
                 <property name="visible">True</property>
-                <property name="can-focus">False</property>
+                <property name="can_focus">False</property>
                 <property name="orientation">vertical</property>
                 <property name="homogeneous">True</property>
                 <child>
@@ -37,8 +33,8 @@
                     <property name="label" translatable="yes">Connect</property>
                     <property name="name">Connect</property>
                     <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="receives-default">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -50,8 +46,8 @@
                   <object class="GtkButton" id="refresh_button">
                     <property name="label" translatable="yes">Refresh lists</property>
                     <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="receives-default">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -69,7 +65,7 @@
             <child>
               <object class="GtkLabel" id="status_label">
                 <property name="visible">True</property>
-                <property name="can-focus">False</property>
+                <property name="can_focus">False</property>
                 <property name="label" translatable="yes">Disconnected</property>
               </object>
               <packing>
@@ -81,14 +77,14 @@
             <child>
               <object class="GtkBox">
                 <property name="visible">True</property>
-                <property name="can-focus">False</property>
+                <property name="can_focus">False</property>
                 <property name="orientation">vertical</property>
                 <property name="homogeneous">True</property>
                 <child>
                   <object class="GtkEntry" id="ip_entry">
                     <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="placeholder-text" translatable="yes">IP Address</property>
+                    <property name="can_focus">True</property>
+                    <property name="placeholder_text" translatable="yes">IP Address</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -99,9 +95,9 @@
                 <child>
                   <object class="GtkEntry" id="port_entry">
                     <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="placeholder-text" translatable="yes">Port number</property>
-                    <property name="input-purpose">number</property>
+                    <property name="can_focus">True</property>
+                    <property name="placeholder_text" translatable="yes">Port number</property>
+                    <property name="input_purpose">number</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -112,8 +108,8 @@
                 <child>
                   <object class="GtkEntry" id="username_entry">
                     <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="placeholder-text" translatable="yes">Username</property>
+                    <property name="can_focus">True</property>
+                    <property name="placeholder_text" translatable="yes">Username</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -131,12 +127,12 @@
             <child>
               <object class="GtkBox">
                 <property name="visible">True</property>
-                <property name="can-focus">False</property>
+                <property name="can_focus">False</property>
                 <property name="orientation">vertical</property>
                 <child>
                   <object class="GtkLabel">
                     <property name="visible">True</property>
-                    <property name="can-focus">False</property>
+                    <property name="can_focus">False</property>
                     <property name="label" translatable="yes">Create chat</property>
                   </object>
                   <packing>
@@ -148,8 +144,8 @@
                 <child>
                   <object class="GtkEntry" id="chat_name_entry">
                     <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="placeholder-text" translatable="yes">Name</property>
+                    <property name="can_focus">True</property>
+                    <property name="placeholder_text" translatable="yes">Name</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -160,8 +156,8 @@
                 <child>
                   <object class="GtkEntry" id="chat_password_entry">
                     <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="placeholder-text" translatable="yes">Password (optional)</property>
+                    <property name="can_focus">True</property>
+                    <property name="placeholder_text" translatable="yes">Password (optional)</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -173,8 +169,8 @@
                   <object class="GtkButton" id="create_chat_button">
                     <property name="label" translatable="yes">Create</property>
                     <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="receives-default">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -199,18 +195,18 @@
         <child>
           <object class="GtkBox">
             <property name="visible">True</property>
-            <property name="can-focus">False</property>
+            <property name="can_focus">False</property>
             <property name="orientation">vertical</property>
             <property name="homogeneous">True</property>
             <child>
               <object class="GtkBox">
                 <property name="visible">True</property>
-                <property name="can-focus">False</property>
+                <property name="can_focus">False</property>
                 <property name="orientation">vertical</property>
                 <child>
                   <object class="GtkLabel">
                     <property name="visible">True</property>
-                    <property name="can-focus">False</property>
+                    <property name="can_focus">False</property>
                     <property name="label" translatable="yes">Chats</property>
                   </object>
                   <packing>
@@ -222,8 +218,8 @@
                 <child>
                   <object class="GtkEntry" id="password_field">
                     <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="placeholder-text" translatable="yes">Password (optional)</property>
+                    <property name="can_focus">True</property>
+                    <property name="placeholder_text" translatable="yes">Password (optional)</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -235,8 +231,8 @@
                   <object class="GtkButton" id="chat_join">
                     <property name="label" translatable="yes">Join</property>
                     <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="receives-default">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -247,7 +243,7 @@
                 <child>
                   <object class="GtkTreeView" id="chat_list">
                     <property name="visible">True</property>
-                    <property name="can-focus">True</property>
+                    <property name="can_focus">True</property>
                     <child internal-child="selection">
                       <object class="GtkTreeSelection"/>
                     </child>
@@ -268,12 +264,12 @@
             <child>
               <object class="GtkBox">
                 <property name="visible">True</property>
-                <property name="can-focus">False</property>
+                <property name="can_focus">False</property>
                 <property name="orientation">vertical</property>
                 <child>
                   <object class="GtkLabel">
                     <property name="visible">True</property>
-                    <property name="can-focus">False</property>
+                    <property name="can_focus">False</property>
                     <property name="label" translatable="yes">Users</property>
                   </object>
                   <packing>
@@ -283,24 +279,9 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkSearchEntry" id="user_search">
-                    <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="primary-icon-name">edit-find-symbolic</property>
-                    <property name="primary-icon-activatable">False</property>
-                    <property name="primary-icon-sensitive">False</property>
-                    <property name="completion">user_search_completion</property>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">1</property>
-                  </packing>
-                </child>
-                <child>
                   <object class="GtkTreeView" id="user_list">
                     <property name="visible">True</property>
-                    <property name="can-focus">True</property>
+                    <property name="can_focus">True</property>
                     <child internal-child="selection">
                       <object class="GtkTreeSelection"/>
                     </child>
@@ -308,7 +289,7 @@
                   <packing>
                     <property name="expand">True</property>
                     <property name="fill">True</property>
-                    <property name="position">2</property>
+                    <property name="position">1</property>
                   </packing>
                 </child>
               </object>
@@ -328,12 +309,12 @@
         <child>
           <object class="GtkBox">
             <property name="visible">True</property>
-            <property name="can-focus">False</property>
+            <property name="can_focus">False</property>
             <property name="orientation">vertical</property>
             <child>
               <object class="GtkLabel">
                 <property name="visible">True</property>
-                <property name="can-focus">False</property>
+                <property name="can_focus">False</property>
                 <property name="label" translatable="yes">Current Chat</property>
               </object>
               <packing>
@@ -345,13 +326,13 @@
             <child>
               <object class="GtkBox">
                 <property name="visible">True</property>
-                <property name="can-focus">False</property>
+                <property name="can_focus">False</property>
                 <property name="orientation">vertical</property>
                 <child>
                   <object class="GtkEntry" id="message_send">
                     <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="primary-icon-stock">gtk-ok</property>
+                    <property name="can_focus">True</property>
+                    <property name="primary_icon_stock">gtk-ok</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -362,8 +343,7 @@
                 <child>
                   <object class="GtkTreeView" id="chat_messages">
                     <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="model">channel_messages_buffer</property>
+                    <property name="can_focus">True</property>
                     <child internal-child="selection">
                       <object class="GtkTreeSelection"/>
                     </child>
@@ -391,12 +371,12 @@
         <child>
           <object class="GtkBox">
             <property name="visible">True</property>
-            <property name="can-focus">False</property>
+            <property name="can_focus">False</property>
             <property name="orientation">vertical</property>
             <child>
               <object class="GtkLabel">
                 <property name="visible">True</property>
-                <property name="can-focus">False</property>
+                <property name="can_focus">False</property>
                 <property name="label" translatable="yes">Direct Messages</property>
               </object>
               <packing>
@@ -408,13 +388,13 @@
             <child>
               <object class="GtkBox">
                 <property name="visible">True</property>
-                <property name="can-focus">False</property>
+                <property name="can_focus">False</property>
                 <property name="orientation">vertical</property>
                 <child>
                   <object class="GtkEntry" id="direct_send">
                     <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="primary-icon-stock">gtk-ok</property>
+                    <property name="can_focus">True</property>
+                    <property name="primary_icon_stock">gtk-ok</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -425,10 +405,10 @@
                 <child>
                   <object class="GtkSearchEntry" id="direct_user">
                     <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="primary-icon-name">edit-find-symbolic</property>
-                    <property name="primary-icon-activatable">False</property>
-                    <property name="primary-icon-sensitive">False</property>
+                    <property name="can_focus">True</property>
+                    <property name="primary_icon_name">edit-find-symbolic</property>
+                    <property name="primary_icon_activatable">False</property>
+                    <property name="primary_icon_sensitive">False</property>
                     <property name="completion">user_search_completion</property>
                   </object>
                   <packing>
@@ -440,8 +420,7 @@
                 <child>
                   <object class="GtkTreeView" id="direct_messages">
                     <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="model">direct_messages_buffer</property>
+                    <property name="can_focus">True</property>
                     <child internal-child="selection">
                       <object class="GtkTreeSelection"/>
                     </child>
@@ -467,6 +446,9 @@
           </packing>
         </child>
       </object>
+    </child>
+    <child type="titlebar">
+      <placeholder/>
     </child>
   </object>
 </interface>
