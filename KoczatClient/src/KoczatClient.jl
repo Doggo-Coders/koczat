@@ -59,6 +59,8 @@ function main(args = ARGS)
 	signal_connect(on_chat_join_clicked, gtkbuilder["chat_join"], :clicked)
 	signal_connect(on_send_message, gtkbuilder["message_send"], :activate)
 	signal_connect(on_send_message, gtkbuilder["message_send"], :icon_press)
+	signal_connect(on_send_direct, gtkbuilder["direct_send"], :activate)
+	signal_connect(on_send_direct, gtkbuilder["direct_send"], :icon_press)
 	
 	GAccessor.model(gtkbuilder["user_search_completion"], GtkTreeModel(user_list_store))
 	
@@ -266,6 +268,39 @@ function repopulate_message_list()
 	empty!(message_list_store)
 	messages:: Vector{Message} = chat_messages[current_chat]
 	isempty(messages) || append!(message_list_store, [(msdg.userid, msg.username, msg.msg) for msg in messages])
+end
+
+function on_send_direct(entry, _...)
+	try
+		msg = get_gtk_property(entry, :text, String)
+		usersel = GAccessor.selection(gtkbuilder["user_list"])
+		
+		if !hasselection(usersel)
+			set_status_err("No user selected")
+			return
+		end
+		
+		userid, username = user_list_store[selected(usersel)]
+		msglenbytes = (as_bytes ∘ hton ∘ UInt16 ∘ length)(msg)
+		
+		req = vcat(UInt8[OP_SEND_DIRECT], as_bytes(hton(userid)), msglenbytes, as_bytes(msg))
+		write(conn, req)
+		bytes = readavailable(conn)
+		status = bytes[2]
+		
+		if status == STAT_FU
+			set_status_fu()
+			return
+		elseif status == STAT_SEND_DIRECT_BAD_USER
+			set_status_err("Bad user")
+			return
+		end
+		
+		@info "Sent message to user #$userid $username"
+		push!(direct_list_store, (ouruserid, ourusername, userid, username, msg))
+	catch e
+		@error e
+	end
 end
 
 function on_send_message(entry, _...)
