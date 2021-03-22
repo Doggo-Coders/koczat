@@ -428,6 +428,7 @@ handle_new_connection(int connfd)
 	
 	// TODO: Validate names UTF-8/ASCII/non-NUL
 	
+	resp.userid = htons(userid);
 	resp.status = STAT_OK;
 	
 	if (send_packet(connfd, &resp, sizeof(struct HelloResp)) < 0) {

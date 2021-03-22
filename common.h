@@ -35,6 +35,7 @@ struct Hello {
 struct HelloResp {
 	uint8_t op;
 	uint8_t status;
+	uint16_t userid;
 };
 
 #define OP_FORCED_DISCONNECT 3
