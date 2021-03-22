@@ -172,7 +172,7 @@ function update_chat_list()
 		@info "isopen=$(bytes[ind+2])"
 		is_open = bytes[ind+2] != 0
 		namelen = ntoh(bytes2u16(bytes[ind+3:ind+4]))
-		name = String(copy(bytes[ind+5:ind+5+namelen-1]))
+		name = String(bytes[ind+5:ind+5+namelen-1])
 		@info "Chat #$id: $name (len $namelen); open: $is_open"
 		push!(chat_list_store, (id, is_open, name))
 		ind += 5 + namelen
@@ -197,7 +197,7 @@ function update_user_list()
 	for i in 1:userslen
 		id = ntoh(bytes2u16(bytes[ind:ind+1]))
 		namelen = ntoh(bytes2u16(bytes[ind+2:ind+3]))
-		name = String(copy(bytes[ind+4:ind+4+namelen-1]))
+		name = String(bytes[ind+4:ind+4+namelen-1])
 		@info "User #$id: $name (len $namelen)"
 		push!(user_list_store, (id, name))
 		ind += 4 + namelen
