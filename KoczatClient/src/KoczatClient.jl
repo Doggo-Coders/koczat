@@ -17,7 +17,7 @@ function main(args = ARGS)
 	global gtkbuilder = GtkBuilder(buffer = glade_xml)
 	global window = gtkbuilder["application"]
 	global user_list_store = GtkListStore(UInt16, String)
-	global chat_list_store = GtkListStore(UInt16, Bool, String)
+	global chat_list_store = GtkListStore(UInt16, Bool, String, Bool)
 	
 	GAccessor.model(gtkbuilder["user_list"], GtkTreeModel(user_list_store))
 	push!(gtkbuilder["user_list"], GtkTreeViewColumn("ID", GtkCellRendererText(), Dict([("text", 0)])))
@@ -27,16 +27,20 @@ function main(args = ARGS)
 	push!(gtkbuilder["chat_list"], GtkTreeViewColumn("ID", GtkCellRendererText(), Dict([("text", 0)])))
 	push!(gtkbuilder["chat_list"], GtkTreeViewColumn("Open", GtkCellRendererText(), Dict([("text", 1)])))
 	push!(gtkbuilder["chat_list"], GtkTreeViewColumn("Name", GtkCellRendererText(), Dict([("text", 2)])))
+	push!(gtkbuilder["chat_list"], GtkTreeViewColumn("Joined", GtkCellRendererText(), Dict([("text", 3)])))
 	
 	signal_connect(on_connect_button_clicked, gtkbuilder["connect_button"], :clicked)
 	signal_connect(on_refresh_button_clicked, gtkbuilder["refresh_button"], :clicked)
 	signal_connect(on_create_chat_button_clicked, gtkbuilder["create_chat_button"], :clicked)
+	signal_connect(on_chat_join_clicked, gtkbuilder["chat_join"], :clicked)
 	
 	@info "Showing window"
 	showall(window)
 	
 	@async Gtk.main()
 	Gtk.waitforsignal(window, :destroy)
+	
+	conn === nothing || close(conn)
 end
 
 as_bytes(x:: Integer) = reinterpret(UInt8, [x])
@@ -48,6 +52,66 @@ set_status_err(error) = set_gtk_property!(gtkbuilder["status_label"], :label, "E
 set_status_err() = set_gtk_property!(gtkbuilder["status_label"], :label, "Unknown error")
 set_status_fu() = set_gtk_property!(gtkbuilder["status_label"], :label, "Error: The server hates us")
 
+
+function on_chat_join_clicked(btn)
+	try
+		pass = get_gtk_property(gtkbuilder["password_field"], :text, String)
+		chatsel = GAccessor.selection(gtkbuilder["chat_list"])
+		
+		if !hasselection(chatsel)
+			@error "No chat selected"
+			set_status_err("No chat selected")
+			return
+		end
+		
+		chat = chat_list_store[selected(chatsel)]
+		chatid = chat[1]
+		
+		if isempty(pass)
+			req = vcat(UInt8[OP_JOIN_OPEN_CHAT], as_bytes(hton(chatid)))
+			write(conn, req)
+			bytes = readavailable(conn)
+			status = bytes[2]
+			
+			if status == STAT_FU
+				set_status_fu()
+			elseif status == STAT_JOIN_OPEN_CHAT_BAD_CHAT
+				set_status_err("Bad chat")
+			elseif status == STAT_JOIN_OPEN_CHAT_ALREADY_JOINED
+				set_status_err("Already joined")
+			elseif status == STAT_JOIN_OPEN_CHAT_NOT_OPEN
+				set_status_err("Chat not open")
+			else
+				set_status("Joined chat")
+				chat_list_store[selected(chatsel), 4] = true
+			end
+		else
+			passlenbytes = as_bytes(hton(UInt16(length(pass))))
+			req = vcat(UInt8[OP_JOIN_PASSWORD_CHAT], as_bytes(hton(chatid)), passlenbytes, as_bytes(pass))
+			write(conn, req)
+			bytes = readavailable(conn)
+			status = bytes[2]
+			
+			if status == STAT_FU
+				set_status_fu()
+			elseif status == STAT_JOIN_PASSWORD_CHAT_BAD_CHAT
+				set_status_err("Bad chat")
+			elseif status == STAT_JOIN_PASSWORD_CHAT_ALREADY_JOINED
+				set_status_err("Already joined")
+			elseif status == STAT_JOIN_PASSWORD_CHAT_NOT_PASSWORD
+				set_status_err("Chat not password-protected")
+			elseif status == STAT_JOIN_PASSWORD_CHAT_BAD_PASSWORD
+				set_status_err("Bad password")
+			else
+				set_status("Joined chat")
+				chat_list_store[selected(chatsel), 4] = true
+			end
+		end
+	catch e
+		@error e
+		set_status_err()
+	end
+end
 
 function on_connect_button_clicked(btn)
 	if conn === nothing
