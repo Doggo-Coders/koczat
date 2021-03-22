@@ -10,6 +10,14 @@ struct Message
 	msg:: String
 end
 
+struct DM
+	senderid:: UInt16
+	sendername:: String
+	recipientid:: UInt16
+	recipientname:: String
+	msg:: String
+end
+
 const glade_xml = read(joinpath(@__DIR__, "../chatapp.glade"), String)
 
 gtkbuilder = nothing
@@ -20,6 +28,7 @@ chat_list_store = nothing
 message_list_store = nothing
 chat_messages = nothing
 current_chat = nothing
+direct_list_store = nothing
 
 julia_main() = (main(); Cint(0))
 function main(args = ARGS)
@@ -29,6 +38,7 @@ function main(args = ARGS)
 	global chat_list_store = GtkListStore(UInt16, Bool, String, Bool)
 	global message_list_store = GtkListStore(UInt16, String, String)
 	global chat_messages = Dict{UInt16, Vector{Message}}()
+	global direct_list_store = GtkListStore(UInt16, String, UInt16, String, String)
 	
 	GAccessor.model(gtkbuilder["user_list"], GtkTreeModel(user_list_store))
 	push!(gtkbuilder["user_list"], GtkTreeViewColumn("ID", GtkCellRendererText(), Dict([("text", 0)])))
@@ -43,6 +53,11 @@ function main(args = ARGS)
 	GAccessor.model(gtkbuilder["chat_messages"], GtkTreeModel(message_list_store))
 	push!(gtkbuilder["chat_messages"], GtkTreeViewColumn("Author", GtkCellRendererText(), Dict([("text", 1)])))
 	push!(gtkbuilder["chat_messages"], GtkTreeViewColumn("Message", GtkCellRendererText(), Dict([("text", 2)])))
+	
+	GAccessor.model(gtkbuilder["direct_messages"], GtkTreeModel(direct_list_store))
+	push!(gtkbuilder["direct_messages"], GtkTreeViewColumn("From", GtkCellRendererText(), Dict([("text", 1)])))
+	push!(gtkbuilder["direct_messages"], GtkTreeViewColumn("To", GtkCellRendererText(), Dict([("text", 3)])))
+	push!(gtkbuilder["direct_messages"], GtkTreeViewColumn("Message", GtkCellRendererText(), Dict([("text", 4)])))
 	
 	signal_connect(on_connect_button_clicked, gtkbuilder["connect_button"], :clicked)
 	signal_connect(on_refresh_button_clicked, gtkbuilder["refresh_button"], :clicked)
