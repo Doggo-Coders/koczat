@@ -4,6 +4,12 @@ using Gtk, Sockets, Logging
 
 include("common.jl")
 
+struct Message
+	userid:: UInt16
+	username:: String
+	msg:: String
+end
+
 const glade_xml = read(joinpath(@__DIR__, "../chatapp.glade"), String)
 
 gtkbuilder = nothing
@@ -11,6 +17,9 @@ window = nothing
 conn = nothing
 user_list_store = nothing
 chat_list_store = nothing
+message_list_store = nothing
+chat_messages = nothing
+current_chat = nothing
 
 julia_main() = (main(); Cint(0))
 function main(args = ARGS)
@@ -18,6 +27,8 @@ function main(args = ARGS)
 	global window = gtkbuilder["application"]
 	global user_list_store = GtkListStore(UInt16, String)
 	global chat_list_store = GtkListStore(UInt16, Bool, String, Bool)
+	global message_list_store = GtkListStore(UInt16, String, String)
+	global chat_messages = Dict{UInt16, Vector{Message}}()
 	
 	GAccessor.model(gtkbuilder["user_list"], GtkTreeModel(user_list_store))
 	push!(gtkbuilder["user_list"], GtkTreeViewColumn("ID", GtkCellRendererText(), Dict([("text", 0)])))
@@ -28,6 +39,10 @@ function main(args = ARGS)
 	push!(gtkbuilder["chat_list"], GtkTreeViewColumn("Open", GtkCellRendererText(), Dict([("text", 1)])))
 	push!(gtkbuilder["chat_list"], GtkTreeViewColumn("Name", GtkCellRendererText(), Dict([("text", 2)])))
 	push!(gtkbuilder["chat_list"], GtkTreeViewColumn("Joined", GtkCellRendererText(), Dict([("text", 3)])))
+	
+	GAccessor.model(gtkbuilder["chat_messages"], GtkTreeModel(message_list_store))
+	push!(gtkbuilder["chat_messages"], GtkTreeViewColumn("Author", GtkCellRendererText(), Dict([("text", 1)])))
+	push!(gtkbuilder["chat_messages"], GtkTreeViewColumn("Message", GtkCellRendererText(), Dict([("text", 2)])))
 	
 	signal_connect(on_connect_button_clicked, gtkbuilder["connect_button"], :clicked)
 	signal_connect(on_refresh_button_clicked, gtkbuilder["refresh_button"], :clicked)
@@ -68,47 +83,55 @@ function on_chat_join_clicked(btn)
 		
 		chat = chat_list_store[selected(chatsel)]
 		chatid = UInt16(chat[1])
+		isjoined = chat[4]
 		
-		if isempty(pass)
-			req = vcat(UInt8[OP_JOIN_OPEN_CHAT], as_bytes(hton(chatid)))
-			write(conn, req)
-			bytes = readavailable(conn)
-			status = bytes[2]
-			
-			if status == STAT_FU
-				set_status_fu()
-			elseif status == STAT_JOIN_OPEN_CHAT_BAD_CHAT
-				set_status_err("Bad chat")
-			elseif status == STAT_JOIN_OPEN_CHAT_ALREADY_JOINED
-				set_status_err("Already joined")
-			elseif status == STAT_JOIN_OPEN_CHAT_NOT_OPEN
-				set_status_err("Chat not open")
-			else
-				set_status("Joined chat")
-				chat_list_store[selected(chatsel), 4] = true
-				@info "Joined chat $chat"
-			end
+		if isjoined
+			global current_chat = chatid
+			repopulate_message_list()
 		else
-			passlenbytes = as_bytes(hton(UInt16(length(pass))))
-			req = vcat(UInt8[OP_JOIN_PASSWORD_CHAT], as_bytes(hton(chatid)), passlenbytes, as_bytes(pass))
-			write(conn, req)
-			bytes = readavailable(conn)
-			status = bytes[2]
-			
-			if status == STAT_FU
-				set_status_fu()
-			elseif status == STAT_JOIN_PASSWORD_CHAT_BAD_CHAT
-				set_status_err("Bad chat")
-			elseif status == STAT_JOIN_PASSWORD_CHAT_ALREADY_JOINED
-				set_status_err("Already joined")
-			elseif status == STAT_JOIN_PASSWORD_CHAT_NOT_PASSWORD
-				set_status_err("Chat not password-protected")
-			elseif status == STAT_JOIN_PASSWORD_CHAT_BAD_PASSWORD
-				set_status_err("Bad password")
+			if isempty(pass)
+				req = vcat(UInt8[OP_JOIN_OPEN_CHAT], as_bytes(hton(chatid)))
+				write(conn, req)
+				bytes = readavailable(conn)
+				status = bytes[2]
+				
+				if status == STAT_FU
+					set_status_fu()
+				elseif status == STAT_JOIN_OPEN_CHAT_BAD_CHAT
+					set_status_err("Bad chat")
+				elseif status == STAT_JOIN_OPEN_CHAT_ALREADY_JOINED
+					set_status_err("Already joined")
+				elseif status == STAT_JOIN_OPEN_CHAT_NOT_OPEN
+					set_status_err("Chat not open")
+				else
+					set_status("Joined chat")
+					chat_list_store[selected(chatsel), 4] = true
+					chat_messages[chatid] = Message[]
+					@info "Joined chat $chat"
+				end
 			else
-				set_status("Joined chat")
-				chat_list_store[selected(chatsel), 4] = true
-				@info "Joined chat $chat"
+				passlenbytes = as_bytes(hton(UInt16(length(pass))))
+				req = vcat(UInt8[OP_JOIN_PASSWORD_CHAT], as_bytes(hton(chatid)), passlenbytes, as_bytes(pass))
+				write(conn, req)
+				bytes = readavailable(conn)
+				status = bytes[2]
+				
+				if status == STAT_FU
+					set_status_fu()
+				elseif status == STAT_JOIN_PASSWORD_CHAT_BAD_CHAT
+					set_status_err("Bad chat")
+				elseif status == STAT_JOIN_PASSWORD_CHAT_ALREADY_JOINED
+					set_status_err("Already joined")
+				elseif status == STAT_JOIN_PASSWORD_CHAT_NOT_PASSWORD
+					set_status_err("Chat not password-protected")
+				elseif status == STAT_JOIN_PASSWORD_CHAT_BAD_PASSWORD
+					set_status_err("Bad password")
+				else
+					set_status("Joined chat")
+					chat_list_store[selected(chatsel), 4] = true
+					chat_messages[chatid] = Message[]
+					@info "Joined chat $chat"
+				end
 			end
 		end
 	catch e
@@ -160,6 +183,8 @@ function on_connect_button_clicked(btn)
 		global conn = nothing
 		set_gtk_property!(btn, :label, "Connect")
 		set_status("Disconnected")
+		global current_chat = nothing
+		empty!.((chat_messages, user_list_store, message_list_store, chat_list_store))
 		@info "Disconnected"
 	end
 end
@@ -222,6 +247,12 @@ function on_refresh_button_clicked(btn)
 		@error e
 		set_status_err()
 	end
+end
+
+function repopulate_message_list()
+	empty!(message_list_store)
+	messages:: Vector{Message} = chat_messages[current_chat]
+	isempty(messages) || append!(message_list_store, [(msdg.userid, msg.username, msg.msg) for msg in messages])
 end
 
 function update_chat_list()
