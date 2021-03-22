@@ -659,7 +659,7 @@ send_direct(uint16_t userid, const struct SendDirect *req, struct SendDirectResp
 	}
 	
 	resp->status = STAT_OK;
-
+	
 	log_info(
 		"User %s (ID %hu) sent a direct message to %s (ID %hu).",
 		g_users[userid-1].name, userid,

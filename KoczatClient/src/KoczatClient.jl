@@ -374,18 +374,18 @@ function update_chat_list()
 	end
 	
 	chatslen = ntoh(bytes2u16(bytes[3:4]))
-
-  joined = Dict{UInt16, Bool}()
-  
-    for i in 1:256
-        try
-            id = chat_list_store[i, 1]
-            val = chat_list_store[i, 4]
-            joined[id] = val 
-        catch
-            break
-        end
-    end
+	
+	joined = Dict{UInt16, Bool}()
+	
+	for i in 1:256
+		try
+			id = chat_list_store[i, 1]
+			val = chat_list_store[i, 4]
+			joined[id] = val 
+		catch
+			break
+		end
+	end
 	empty!(chat_list_store)
 	ind = 5
 	for i in 1:chatslen
@@ -395,12 +395,12 @@ function update_chat_list()
 		namelen = ntoh(bytes2u16(bytes[ind+3:ind+4]))
 		name = String(bytes[ind+5:ind+5+namelen-1])
 		@info "Chat #$id: $name (len $namelen); open: $is_open"
-      is_joined = false
-      try
-          is_joined = joined[id]
-      catch
-          is_joined = false
-      end
+		is_joined = false
+		try
+			is_joined = joined[id]
+		catch
+			is_joined = false
+		end
 		push!(chat_list_store, (id, is_open, name, is_joined))
 		ind += 5 + namelen
 	end
