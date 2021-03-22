@@ -268,7 +268,7 @@ function repopulate_message_list()
 	isempty(messages) || append!(message_list_store, [(msdg.userid, msg.username, msg.msg) for msg in messages])
 end
 
-function on_send_message(entry, ...)
+function on_send_message(entry, _...)
 	msg = get_gtk_property(entry, :text, String)
 	chatid = UInt16(current_chat)
 	msglenbytes = (as_bytes ∘ hton ∘ UInt16 ∘ length)(msg)
