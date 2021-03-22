@@ -72,6 +72,8 @@ function on_connect_button_clicked(btn)
 			
 			if status == STAT_OK
 				set_gtk_property!(btn, :label, "Disconnect")
+		    update_chat_list() || return
+		    update_user_list() || return
 				set_status("Connected")
 			elseif status == STAT_FU
 				set_status_fu()
